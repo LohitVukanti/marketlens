@@ -3,8 +3,9 @@
 // New Analysis page — form inputs + submit logic.
 // Calls /api/generate-report (secure backend route).
 // ============================================================
+'use client'
 
-"use client";
+export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
