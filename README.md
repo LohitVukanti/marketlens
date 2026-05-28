@@ -23,6 +23,27 @@ Enter a business idea, location, and target customer → get a complete market i
 - Export as JSON, PDF, or copy to clipboard
 
 ---
+---
+
+## Screenshots
+
+### Landing Page
+
+![Landing Page](public/screenshots/landing.png)
+
+### Analysis Form
+
+![Analysis Form](public/screenshots/analyze.png)
+
+### Dashboard
+
+![Dashboard](public/screenshots/dashboard.png)
+
+### Saved Reports
+
+![Saved Reports](public/screenshots/saved-reports.png)
+
+---
 
 ## Project Structure
 
@@ -156,7 +177,7 @@ Your app will be live at `https://your-project.vercel.app`.
 In your Supabase dashboard → **Settings → API → CORS Allowed Origins**, add your Vercel URL:
 
 ```
-https://your-project.vercel.app
+https://marketlens-blvjl37ul-lohitvukanti1.vercel.app/
 ```
 
 ---
