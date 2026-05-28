@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "@/lib/supabase";
 import { buildAnalysisPrompt, parseAIResponse } from "@/lib/ai-prompt";
-import { MOCK_REPORT_DATA, MOCK_SAVED_REPORT } from "@/lib/mock-data";
+import { MOCK_REPORT_DATA } from "@/lib/mock-data";
 import type {
   GenerateReportRequest,
   GenerateReportResponse,
@@ -120,16 +120,22 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRepor
   }
 
   // ── 5. Save to Supabase ────────────────────────────────────
-  const supabase = createServerSupabase();
-  let savedReport: SavedReport;
-
-  // If Supabase is not configured, return an in-memory report
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
   if (!supabaseUrl || supabaseUrl.includes("your-project")) {
-    console.warn("[generate-report] Supabase not configured — returning in-memory report.");
-    savedReport = {
-      id: `local-${Date.now()}`,
-      created_at: new Date().toISOString(),
+    console.error("[generate-report] Supabase not configured — cannot save report.");
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Report could not be saved: Supabase is not configured on the server.",
+      },
+      { status: 500 }
+    );
+  }
+
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("reports")
+    .insert({
       niche,
       location,
       target_customer: customer,
@@ -138,45 +144,23 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRepor
       competitors_input: competitors ?? null,
       report_data: reportData,
       is_mock: isMockMode,
-    };
-  } else {
-    const { data, error } = await supabase
-      .from("reports")
-      .insert({
-        niche,
-        location,
-        target_customer: customer,
-        product_type: productType,
-        price_range: priceRange ?? null,
-        competitors_input: competitors ?? null,
-        report_data: reportData,
-        is_mock: isMockMode,
-      })
-      .select()
-      .single();
+    })
+    .select()
+    .single();
 
-    if (error) {
-      console.error("[generate-report] Supabase insert error:", error);
-      // Don't fail the whole request — return unsaved report
-      savedReport = {
-        id: `unsaved-${Date.now()}`,
-        created_at: new Date().toISOString(),
-        niche,
-        location,
-        target_customer: customer,
-        product_type: productType,
-        price_range: priceRange ?? null,
-        competitors_input: competitors ?? null,
-        report_data: reportData,
-        is_mock: isMockMode,
-      };
-    } else {
-      savedReport = data as SavedReport;
-    }
+  if (error) {
+    console.error("[generate-report] Supabase insert error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Report could not be saved: ${error.message}`,
+      },
+      { status: 500 }
+    );
   }
 
   // ── 6. Return success ──────────────────────────────────────
-  return NextResponse.json({ success: true, report: savedReport });
+  return NextResponse.json({ success: true, report: data as SavedReport });
 }
 
 // Reject non-POST methods
