@@ -5,10 +5,8 @@
 // ============================================================
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import { AlertBox, Spinner } from "@/components/ui";
 import type { AnalysisFormInputs, GenerateReportResponse } from "@/types";
@@ -67,8 +65,6 @@ function Field({
 // ============================================================
 export default function AnalyzePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const isMockParam = searchParams.get("mock") === "true";
 
   const [form, setForm] = useState<AnalysisFormInputs>({
     niche: "",
@@ -83,46 +79,40 @@ export default function AnalyzePage() {
   const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // If ?mock=true, auto-submit with mock flag
-  useEffect(() => {
-    if (isMockParam) {
-      handleMockSubmit();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Cycle through loading messages
-  useEffect(() => {
-    if (!loading) { setLoadingStep(0); return; }
-    const interval = setInterval(() => {
-      setLoadingStep((s) => (s < LOADING_STEPS.length - 1 ? s + 1 : s));
-    }, 1800);
-    return () => clearInterval(interval);
-  }, [loading]);
-
   const set = (field: keyof AnalysisFormInputs) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [field]: e.target.value }));
 
   function validate(): string | null {
-    if (!form.niche.trim())    return "Please describe your business idea or niche.";
+    if (!form.niche.trim()) return "Please describe your business idea or niche.";
     if (!form.location.trim()) return "Please enter a location or target market.";
     if (!form.customer.trim()) return "Please describe your target customer.";
-    if (!form.productType)     return "Please select a product or service type.";
+    if (!form.productType) return "Please select a product or service type.";
     return null;
   }
 
   async function submit(useMock = false) {
     if (!useMock) {
       const err = validate();
-      if (err) { setError(err); return; }
+      if (err) {
+        setError(err);
+        return;
+      }
     }
     setError(null);
     setLoading(true);
 
     try {
       const payload = useMock
-        ? { niche: "Handmade Soy Candles", location: "Tampa, FL", customer: "Millennial women 25-38", productType: "E-commerce / Etsy / Shopify store", priceRange: "$26-$48", competitors: "Yankee Candle, Bath & Body Works", useMock: true }
+        ? {
+            niche: "Handmade Soy Candles",
+            location: "Tampa, FL",
+            customer: "Millennial women 25-38",
+            productType: "E-commerce / Etsy / Shopify store",
+            priceRange: "$26-$48",
+            competitors: "Yankee Candle, Bath & Body Works",
+            useMock: true
+          }
         : { ...form, useMock: false };
 
       const res = await fetch("/api/generate-report", {
@@ -149,6 +139,29 @@ export default function AnalyzePage() {
 
   function handleMockSubmit() { submit(true); }
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); submit(false); }
+
+  // Client-side query param check: if ?mock=true, auto-submit with mock flag
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const isMockParam = new URLSearchParams(window.location.search).get("mock") === "true";
+    if (isMockParam) {
+      handleMockSubmit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cycle through loading messages
+  useEffect(() => {
+    if (!loading) {
+      setLoadingStep(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLoadingStep((s) => (s < LOADING_STEPS.length - 1 ? s + 1 : s));
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   // ---- Loading screen ----------------------------------------
   if (loading) {
