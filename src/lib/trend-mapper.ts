@@ -12,6 +12,20 @@ export type TrendSignalRow = {
   acceleration_score: number;
   opportunity_score: number;
   confidence_score: number;
+  reddit_mentions_last_7_days?: number | null;
+  reddit_mentions_previous_7_days?: number | null;
+  reddit_growth_rate?: number | null;
+  reddit_source?: TrendSignal["redditSource"] | null;
+  reddit_confidence?: number | null;
+  etsy_listing_count?: number | null;
+  etsy_competition_level?: TrendSignal["etsyCompetitionLevel"] | null;
+  etsy_avg_price?: string | null;
+  etsy_source?: TrendSignal["etsySource"] | null;
+  etsy_confidence?: number | null;
+  source_count?: number | null;
+  source_confidence?: number | null;
+  score_explanation?: TrendSignal["scoreExplanation"] | null;
+  why_trending?: string | null;
   trend_state: TrendState;
   summary: string;
   tags: string[] | null;
@@ -52,6 +66,20 @@ export function mapTrendSignalRow(row: TrendSignalRow): TrendSignal {
     confidenceScore: row.confidence_score,
     currentTrendValue: row.current_trend_value,
     baselineTrendValue: row.baseline_trend_value,
+    redditMentionsLast7Days: row.reddit_mentions_last_7_days ?? undefined,
+    redditMentionsPrevious7Days: row.reddit_mentions_previous_7_days ?? undefined,
+    redditGrowthRate: row.reddit_growth_rate ?? undefined,
+    redditSource: row.reddit_source ?? undefined,
+    redditConfidence: row.reddit_confidence ?? undefined,
+    etsyListingCount: row.etsy_listing_count ?? undefined,
+    etsyCompetitionLevel: row.etsy_competition_level ?? undefined,
+    etsyAvgPrice: row.etsy_avg_price ?? undefined,
+    etsySource: row.etsy_source ?? undefined,
+    etsyConfidence: row.etsy_confidence ?? undefined,
+    sourceCount: row.source_count ?? undefined,
+    sourceConfidence: row.source_confidence ?? undefined,
+    scoreExplanation: row.score_explanation ?? undefined,
+    whyTrending: row.why_trending ?? undefined,
     trendState: row.trend_state,
     signalSource: row.signal_source,
     direction: directionForState(row.trend_state),

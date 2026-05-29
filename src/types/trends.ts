@@ -24,6 +24,27 @@ export interface TrendSignal {
   confidenceScore?: number;
   currentTrendValue?: number;
   baselineTrendValue?: number;
+  redditMentionsLast7Days?: number;
+  redditMentionsPrevious7Days?: number;
+  redditGrowthRate?: number;
+  redditSource?: "reddit_public_json" | "fallback_estimate" | "unavailable";
+  redditConfidence?: number;
+  etsyListingCount?: number;
+  etsyCompetitionLevel?: "low" | "medium" | "high";
+  etsyAvgPrice?: string;
+  etsySource?: "etsy_api" | "fallback_estimate" | "unavailable";
+  etsyConfidence?: number;
+  sourceCount?: number;
+  sourceConfidence?: number;
+  scoreExplanation?: {
+    formula?: string;
+    google?: Record<string, unknown>;
+    reddit?: Record<string, unknown>;
+    etsy?: Record<string, unknown>;
+    source_agreement?: number;
+    opportunity_score?: number;
+  };
+  whyTrending?: string;
   trendState?: TrendState;
   signalSource?: "google_trends" | "fallback_seed" | "mock";
   direction: TrendDirection;

@@ -48,6 +48,17 @@ const COMP_CONFIG = {
   high:   { label: "High Competition",   cls: "badge-red" },
 };
 
+function formatGrowth(value?: number) {
+  if (typeof value !== "number") return "n/a";
+  if (value === 0) return "0%";
+  return `${value > 0 ? "+" : ""}${Math.round(value)}%`;
+}
+
+function formatListingCount(value?: number) {
+  if (typeof value !== "number") return "n/a";
+  return value.toLocaleString();
+}
+
 export default function TrendCard({ signal, onWatch, isWatched = false, isUpdating = false }: {
   signal: TrendSignal;
   onWatch?: (s: TrendSignal) => void;
@@ -92,8 +103,57 @@ export default function TrendCard({ signal, onWatch, isWatched = false, isUpdati
 
       {/* Summary */}
       <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-        {signal.summary}
+        {signal.whyTrending || signal.summary}
       </p>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg p-2" style={{ background: "var(--bg-hover)" }}>
+          <p className="text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>
+            Google Trends
+          </p>
+          <p className="text-xs font-semibold mono" style={{ color: "var(--text-primary)" }}>
+            {signal.velocityScore !== undefined && signal.velocityScore >= 0 ? "+" : ""}
+            {signal.velocityScore ?? signal.momentum} velocity
+          </p>
+          <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+            Accel {signal.accelerationScore !== undefined && signal.accelerationScore >= 0 ? "+" : ""}
+            {signal.accelerationScore ?? "n/a"}
+          </p>
+        </div>
+        <div className="rounded-lg p-2" style={{ background: "var(--bg-hover)" }}>
+          <p className="text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>
+            Reddit
+          </p>
+          <p className="text-xs font-semibold mono" style={{ color: "var(--text-primary)" }}>
+            {signal.redditMentionsLast7Days ?? 0} mentions
+          </p>
+          <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+            {formatGrowth(signal.redditGrowthRate)} vs prev 7d
+          </p>
+        </div>
+        <div className="rounded-lg p-2" style={{ background: "var(--bg-hover)" }}>
+          <p className="text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>
+            Etsy
+          </p>
+          <p className="text-xs font-semibold mono" style={{ color: "var(--text-primary)" }}>
+            {formatListingCount(signal.etsyListingCount)} listings
+          </p>
+          <p className="text-[10px] capitalize" style={{ color: "var(--text-muted)" }}>
+            {signal.etsyCompetitionLevel || signal.competitionLevel} competition
+          </p>
+        </div>
+        <div className="rounded-lg p-2" style={{ background: "var(--bg-hover)" }}>
+          <p className="text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>
+            Confidence
+          </p>
+          <p className="text-xs font-semibold mono" style={{ color: "var(--text-primary)" }}>
+            {signal.confidenceScore ?? 0}/100
+          </p>
+          <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+            {signal.sourceCount ?? 1} source{(signal.sourceCount ?? 1) === 1 ? "" : "s"}
+          </p>
+        </div>
+      </div>
 
       {/* Meta row */}
       <div className="flex flex-wrap gap-2 items-center">

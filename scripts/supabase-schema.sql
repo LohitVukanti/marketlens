@@ -88,6 +88,20 @@ create table if not exists public.trend_signals (
   acceleration_score    integer not null check (acceleration_score between -100 and 100),
   opportunity_score     integer not null check (opportunity_score between 0 and 100),
   confidence_score      integer not null check (confidence_score between 0 and 100),
+  reddit_mentions_last_7_days integer not null default 0 check (reddit_mentions_last_7_days >= 0),
+  reddit_mentions_previous_7_days integer not null default 0 check (reddit_mentions_previous_7_days >= 0),
+  reddit_growth_rate    numeric not null default 0,
+  reddit_source         text not null default 'unavailable',
+  reddit_confidence     integer not null default 0 check (reddit_confidence between 0 and 100),
+  etsy_listing_count    integer check (etsy_listing_count is null or etsy_listing_count >= 0),
+  etsy_competition_level text check (etsy_competition_level is null or etsy_competition_level in ('low', 'medium', 'high')),
+  etsy_avg_price        text,
+  etsy_source           text not null default 'unavailable',
+  etsy_confidence       integer not null default 0 check (etsy_confidence between 0 and 100),
+  source_count          integer not null default 1 check (source_count between 1 and 3),
+  source_confidence     integer not null default 0 check (source_confidence between 0 and 100),
+  score_explanation     jsonb not null default '{}'::jsonb,
+  why_trending          text,
   trend_state           public.trend_state not null,
   summary               text not null,
   tags                  text[] not null default '{}',
@@ -105,6 +119,15 @@ create index if not exists trend_signals_score_idx
 
 create index if not exists trend_signals_state_idx
   on public.trend_signals (trend_state);
+
+create index if not exists trend_signals_reddit_growth_idx
+  on public.trend_signals (reddit_growth_rate desc);
+
+create index if not exists trend_signals_etsy_competition_idx
+  on public.trend_signals (etsy_competition_level);
+
+create index if not exists trend_signals_source_count_idx
+  on public.trend_signals (source_count desc);
 
 alter table public.trend_signals enable row level security;
 

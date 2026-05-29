@@ -151,14 +151,17 @@ This loads a fully rendered sample report (handmade soy candle business in Tampa
 
 ---
 
-## Phase 1 Signal Engine
+## Signal Engine
 
-MarketLens now has a real trend signal path for `/feed`:
+MarketLens has a multi-source signal path for `/feed`:
 
 - `trend_signals` stores the latest product opportunity signals.
 - `signal_history` stores each collector snapshot.
 - `collection_jobs` records collector runs and fallback reasons.
 - `/feed` reads Supabase first and falls back to the original mock feed only when Supabase is not configured, the query fails, or there are no rows.
+- Google Trends remains the primary search-interest signal.
+- Reddit public JSON search is used for mention growth when available.
+- Etsy listing data uses the official Etsy API when `ETSY_API_KEY` is present; otherwise the collector uses deterministic fallback estimates.
 
 ### Required env vars
 
@@ -168,6 +171,12 @@ The report generator still uses the AI env vars above. The signal collector requ
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# Optional source enrichment
+REDDIT_USER_AGENT=MarketLensSignalCollector/0.2
+REDDIT_COLLECT_ENABLED=true
+ETSY_API_KEY=your_etsy_api_key_here
+ETSY_COLLECT_ENABLED=true
 ```
 
 Do not expose `SUPABASE_SERVICE_ROLE_KEY` in the browser. It is only used by server-side code and local scripts.
@@ -180,6 +189,46 @@ Run the full contents of `scripts/supabase-schema.sql` in the Supabase SQL Edito
 - `signal_history`
 - `collection_jobs`
 - `watchlist_items`
+
+For an existing Phase 1 database, run these migrations in order:
+
+1. `scripts/phase-2-watchlist-items.sql`
+2. `scripts/phase-a-b-signal-enrichment.sql`
+
+The signal enrichment migration adds:
+
+- Reddit fields: `reddit_mentions_last_7_days`, `reddit_mentions_previous_7_days`, `reddit_growth_rate`, `reddit_source`, `reddit_confidence`
+- Etsy fields: `etsy_listing_count`, `etsy_competition_level`, `etsy_avg_price`, `etsy_source`, `etsy_confidence`
+- scoring fields: `source_count`, `source_confidence`, `score_explanation`, `why_trending`
+
+### Multi-source scoring
+
+`npm run signals:update` now builds an explainable `opportunity_score` from:
+
+- 24% current Google Trends interest
+- 22% Google Trends velocity
+- 13% Google Trends acceleration
+- 16% Reddit mention growth
+- 15% Etsy competition/saturation
+- 10% source agreement
+
+The collector also writes `why_trending`, for example: search interest rose versus baseline, Reddit mentions increased, and Etsy competition remains low. `/feed` shows Google, Reddit, Etsy, and confidence details on each card.
+
+### Source reliability and fallbacks
+
+Real sources:
+
+- Google Trends through local Python `pytrends`, when available.
+- Reddit public JSON search endpoint, when reachable and not rate-limited.
+- Etsy official API, only when `ETSY_API_KEY` is configured.
+
+Fallback sources:
+
+- Google fallback seed data when `pytrends`, Python, network, or Google Trends fails.
+- Reddit deterministic mention estimates when Reddit is disabled, blocked, rate-limited, or unavailable.
+- Etsy deterministic competition estimates when `ETSY_API_KEY` is missing or the API fails.
+
+Fallbacks never block the collector. Failures are recorded in `collection_jobs.error_message`, and the update finishes as `completed_with_warnings`.
 
 ### Phase 2 Watchlists and Alert Thresholds
 
@@ -251,6 +300,7 @@ npm run signals:update
 ```
 
 This command tries to collect US Google Trends data through local Python `pytrends`. If `pytrends`, Python, network access, or Google Trends fails, the script upserts deterministic fallback seed signals so the platform remains demo-safe.
+It also enriches each keyword with Reddit mention growth and Etsy competition data when those sources are available.
 
 Optional local Google Trends dependency:
 
@@ -264,11 +314,14 @@ python3 -m pip install pytrends
 
 1. Run the SQL schema in Supabase.
 2. Confirm `.env.local` has the three Supabase variables above.
-3. Run `npm run signals:update`.
-4. Start the app with `npm run dev`.
-5. Open `/feed` and look for the source label in the filter bar:
+3. For Etsy real data, set `ETSY_API_KEY`; otherwise Etsy uses fallback estimates.
+4. Optionally set `REDDIT_USER_AGENT` to a descriptive collector name.
+5. Run `npm run signals:update`.
+6. Start the app with `npm run dev`.
+7. Open `/feed` and look for the source label in the filter bar:
    - `Supabase live` means rows came from `trend_signals`.
    - `Mock fallback` means Supabase returned no usable signal rows.
+8. Inspect any trend card for Google velocity, Reddit mentions/growth, Etsy listing count, confidence, and `why_trending`.
 
 ### Deploy on Vercel safely
 
