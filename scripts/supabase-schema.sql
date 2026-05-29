@@ -201,10 +201,25 @@ create policy "Service role writes collection jobs"
 create table if not exists public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   plan text not null default 'free' check (plan in ('free', 'pro')),
+  stripe_customer_id text,
+  stripe_subscription_id text,
+  stripe_subscription_status text,
+  plan_current_period_end timestamptz,
   daily_briefing_enabled boolean not null default true,
   email_alerts_enabled boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+create unique index if not exists profiles_stripe_customer_uidx
+  on public.profiles (stripe_customer_id)
+  where stripe_customer_id is not null;
+
+create index if not exists profiles_stripe_subscription_idx
+  on public.profiles (stripe_subscription_id)
+  where stripe_subscription_id is not null;
+
+create index if not exists profiles_plan_idx
+  on public.profiles (plan);
 
 alter table public.profiles enable row level security;
 
@@ -225,6 +240,8 @@ create table if not exists public.alert_preferences (
   user_id uuid primary key references auth.users(id) on delete cascade,
   daily_briefing_enabled boolean not null default true,
   email_alerts_enabled boolean not null default false,
+  daily_briefing_last_sent_at timestamptz,
+  alert_email_last_sent_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

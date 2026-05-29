@@ -343,6 +343,104 @@ where user_id = '00000000-0000-0000-0000-000000000000';
 9. Reload the app and confirm the sidebar shows Pro and watchlist additions are unlimited.
 10. Open `/upgrade` and confirm the Stripe placeholder offer is visible.
 
+### Final Monetization: Stripe and Resend
+
+The final monetization layer turns `/upgrade` into a real Stripe flow and adds server-side email jobs:
+
+- `/api/stripe/checkout` creates a Stripe Checkout subscription session for the logged-in user.
+- `/api/stripe/webhook` verifies Stripe signatures and updates `profiles.plan`.
+- `/api/stripe/portal` opens the Stripe Billing Portal for existing Stripe customers.
+- `/api/jobs/daily-briefing` sends daily briefing emails through Resend.
+- `/api/jobs/alert-emails` sends Pro alert emails for breakout or threshold-triggered watchlist items.
+
+Run the final SQL migration after Phase 3:
+
+```bash
+scripts/final-monetization-stripe-resend.sql
+```
+
+Required production env vars:
+
+```env
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+
+# Stripe
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_PRO_PRICE_ID=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Resend
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=MarketLens <briefings@your-domain.com>
+
+# Cron protection
+CRON_SECRET=generate-a-long-random-secret
+```
+
+Existing Supabase env vars are still required:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+Stripe setup:
+
+1. Create a Stripe product named `MarketLens Pro`.
+2. Add a recurring monthly price for `$19`.
+3. Copy the price id into `STRIPE_PRO_PRICE_ID`.
+4. Add a webhook endpoint:
+   `https://your-domain.com/api/stripe/webhook`
+5. Subscribe the webhook to:
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+6. Copy the webhook signing secret into `STRIPE_WEBHOOK_SECRET`.
+7. Enable the Stripe Billing Portal in the Stripe Dashboard.
+
+Resend setup:
+
+1. Verify a sending domain in Resend.
+2. Create an API key and set `RESEND_API_KEY`.
+3. Set `RESEND_FROM_EMAIL` to a verified sender.
+4. Keep `email_alerts_enabled` off until you are ready to send real alert emails.
+
+Production cron options:
+
+Vercel Cron can call:
+
+```txt
+GET /api/jobs/daily-briefing
+GET /api/jobs/alert-emails
+```
+
+Set an `Authorization: Bearer $CRON_SECRET` header if your scheduler supports custom headers. If it does not, call the same endpoints from GitHub Actions with curl:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/jobs/daily-briefing
+curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain.com/api/jobs/alert-emails
+```
+
+Recommended cadence:
+
+- Daily briefing: once each morning.
+- Alert emails: every 1-4 hours after `npm run signals:update` or a scheduled signal refresh.
+
+Manual monetization test:
+
+1. Run `scripts/final-monetization-stripe-resend.sql`.
+2. Set Stripe test env vars.
+3. Log in to MarketLens.
+4. Open `/upgrade` and click `Upgrade`.
+5. Complete Stripe Checkout in test mode.
+6. Confirm the webhook updates `profiles.plan` to `pro`.
+7. Click `Billing Portal` from `/upgrade`.
+8. Set `daily_briefing_enabled = true` for a test profile and call `/api/jobs/daily-briefing`.
+9. Set `plan = 'pro'`, `email_alerts_enabled = true`, and a low watchlist threshold, then call `/api/jobs/alert-emails`.
+10. Confirm guest users can still browse `/feed` and keep anonymous watchlists.
+
 ### Run or seed signals
 
 ```bash
