@@ -1,7 +1,6 @@
 // src/components/ui/TrendCard.tsx
 // The core card for trend signal display in the feed.
 "use client";
-import { useState } from "react";
 import type { TrendSignal } from "@/types";
 import { CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/trend-data";
 
@@ -49,19 +48,15 @@ const COMP_CONFIG = {
   high:   { label: "High Competition",   cls: "badge-red" },
 };
 
-export default function TrendCard({ signal, onWatch }: {
+export default function TrendCard({ signal, onWatch, isWatched = false, isUpdating = false }: {
   signal: TrendSignal;
   onWatch?: (s: TrendSignal) => void;
+  isWatched?: boolean;
+  isUpdating?: boolean;
 }) {
-  const [watching, setWatching] = useState(false);
   const dir = DIRECTION_CONFIG[signal.direction];
   const comp = COMP_CONFIG[signal.competitionLevel];
   const scoreColor = signal.score >= 80 ? "#10b981" : signal.score >= 60 ? "#f59e0b" : "#ef4444";
-
-  function handleWatch() {
-    setWatching(!watching);
-    onWatch?.(signal);
-  }
 
   return (
     <div className="card-hover rounded-2xl p-5 animate-in flex flex-col gap-4">
@@ -121,14 +116,15 @@ export default function TrendCard({ signal, onWatch }: {
 
       {/* Actions */}
       <div className="flex gap-2 pt-1 border-t" style={{ borderColor: "var(--border)" }}>
-        <button onClick={handleWatch}
+        <button onClick={() => onWatch?.(signal)}
+          disabled={isUpdating}
           className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-all ${
-            watching
+            isWatched
               ? "text-indigo-300 border border-indigo-500/30"
               : "btn-secondary"
           }`}
-          style={watching ? { background: "rgba(99,102,241,0.1)" } : {}}>
-          {watching ? "★ Watching" : "☆ Add to Watchlist"}
+          style={isWatched ? { background: "rgba(99,102,241,0.1)" } : {}}>
+          {isUpdating ? "Saving..." : isWatched ? "★ Watching" : "☆ Add to Watchlist"}
         </button>
         <button className="btn-primary text-xs px-4 py-2">
           Deep Analysis →

@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/layout/AppShell";
 import TrendCard from "@/components/ui/TrendCard";
 import { CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/trend-data";
+import {
+  addWatchlistItem,
+  getAnonymousSessionId,
+  getWatchedSignalIds,
+  removeWatchlistItem,
+} from "@/lib/watchlist";
 import type { TrendDirection, TrendSignal } from "@/types";
 
 const DIRECTIONS: { value: TrendDirection | "all"; label: string }[] = [
@@ -32,6 +38,21 @@ export default function FeedClient({
   const [sort, setSort] = useState("score");
   const [search, setSearch] = useState("");
   const [watching, setWatching] = useState<Set<string>>(new Set());
+  const [sessionId, setSessionId] = useState("");
+  const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
+  const [watchError, setWatchError] = useState("");
+
+  useEffect(() => {
+    const nextSessionId = getAnonymousSessionId();
+    setSessionId(nextSessionId);
+
+    getWatchedSignalIds(nextSessionId)
+      .then(setWatching)
+      .catch((error) => {
+        console.warn("[watchlist] Unable to load watched signals:", error.message);
+        setWatchError("Watchlist sync is unavailable. Check the Supabase watchlist table.");
+      });
+  }, []);
 
   const categories = useMemo(() => {
     return Array.from(new Set(signals.map((signal) => signal.category)));
@@ -65,13 +86,27 @@ export default function FeedClient({
     ? Math.round(signals.reduce((sum, trend) => sum + trend.score, 0) / signals.length)
     : 0;
 
-  function handleWatch(signal: TrendSignal) {
-    setWatching((prev) => {
-      const next = new Set(prev);
-      if (next.has(signal.id)) next.delete(signal.id);
-      else next.add(signal.id);
-      return next;
-    });
+  async function handleWatch(signal: TrendSignal) {
+    if (!sessionId || pendingSignalId) return;
+
+    const wasWatching = watching.has(signal.id);
+    const next = new Set(watching);
+    if (wasWatching) next.delete(signal.id);
+    else next.add(signal.id);
+
+    setWatching(next);
+    setPendingSignalId(signal.id);
+    setWatchError("");
+
+    try {
+      if (wasWatching) await removeWatchlistItem(sessionId, signal.id);
+      else await addWatchlistItem(sessionId, signal.id);
+    } catch (error) {
+      setWatching(watching);
+      setWatchError(error instanceof Error ? error.message : "Unable to update watchlist.");
+    } finally {
+      setPendingSignalId(null);
+    }
   }
 
   return (
@@ -151,6 +186,15 @@ export default function FeedClient({
         </span>
       </div>
 
+      {watchError && (
+        <div
+          className="rounded-xl p-3 mb-4 text-xs"
+          style={{ color: "#fbbf24", border: "1px solid rgba(245,158,11,0.25)", background: "rgba(245,158,11,0.08)" }}
+        >
+          {watchError}
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="text-center py-20" style={{ color: "var(--text-muted)" }}>
           <p className="text-sm">No signals match your filters.</p>
@@ -158,7 +202,13 @@ export default function FeedClient({
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((signal) => (
-            <TrendCard key={signal.id} signal={signal} onWatch={handleWatch} />
+            <TrendCard
+              key={signal.id}
+              signal={signal}
+              onWatch={handleWatch}
+              isWatched={watching.has(signal.id)}
+              isUpdating={pendingSignalId === signal.id}
+            />
           ))}
         </div>
       )}

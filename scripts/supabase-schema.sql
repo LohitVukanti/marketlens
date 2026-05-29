@@ -174,6 +174,48 @@ create policy "Service role writes collection jobs"
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
 
+-- ---- Anonymous watchlists ----------------------------------
+create table if not exists public.watchlist_items (
+  id                uuid primary key default gen_random_uuid(),
+  session_id        text not null check (length(trim(session_id)) > 0),
+  signal_id         text not null references public.trend_signals(id) on delete cascade,
+  alert_threshold   integer not null default 80 check (alert_threshold between 0 and 100),
+  created_at        timestamptz not null default now(),
+  last_alerted_at   timestamptz,
+  unique (session_id, signal_id)
+);
+
+create index if not exists watchlist_items_session_created_idx
+  on public.watchlist_items (session_id, created_at desc);
+
+create index if not exists watchlist_items_signal_idx
+  on public.watchlist_items (signal_id);
+
+create index if not exists watchlist_items_threshold_idx
+  on public.watchlist_items (alert_threshold);
+
+alter table public.watchlist_items enable row level security;
+
+-- MVP access: the app stores an anonymous session_id in localStorage and
+-- filters every watchlist query by that value. Full auth should replace
+-- these public policies in Phase 3.
+create policy "Public read watchlist items by session id"
+  on public.watchlist_items for select
+  using (true);
+
+create policy "Public insert watchlist items with session id"
+  on public.watchlist_items for insert
+  with check (length(trim(session_id)) > 0);
+
+create policy "Public update watchlist items with session id"
+  on public.watchlist_items for update
+  using (length(trim(session_id)) > 0)
+  with check (length(trim(session_id)) > 0);
+
+create policy "Public delete watchlist items with session id"
+  on public.watchlist_items for delete
+  using (length(trim(session_id)) > 0);
+
 -- ============================================================
 -- PRODUCTION UPGRADE PATH (add when you implement auth):
 -- ============================================================

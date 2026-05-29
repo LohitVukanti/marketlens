@@ -179,6 +179,70 @@ Run the full contents of `scripts/supabase-schema.sql` in the Supabase SQL Edito
 - `trend_signals`
 - `signal_history`
 - `collection_jobs`
+- `watchlist_items`
+
+### Phase 2 Watchlists and Alert Thresholds
+
+`watchlist_items` stores persistent anonymous watchlists for the retention MVP:
+
+- `session_id` is generated in the browser and saved to `localStorage` under `marketlens_session_id`.
+- The app sends that `session_id` with watchlist reads/writes and filters Supabase queries by it.
+- No login is required yet. This is suitable for the public MVP, but it is not an auth boundary.
+- RLS is enabled with public MVP policies that allow anon reads/writes when a non-empty `session_id` is present. Replace these with `auth.uid()` policies when full auth ships.
+
+Watchlist SQL is included in `scripts/supabase-schema.sql` for fresh projects and `scripts/phase-2-watchlist-items.sql` for existing Phase 1 projects. If your Supabase project already has the Phase 1 tables, run:
+
+```sql
+create table if not exists public.watchlist_items (
+  id                uuid primary key default gen_random_uuid(),
+  session_id        text not null check (length(trim(session_id)) > 0),
+  signal_id         text not null references public.trend_signals(id) on delete cascade,
+  alert_threshold   integer not null default 80 check (alert_threshold between 0 and 100),
+  created_at        timestamptz not null default now(),
+  last_alerted_at   timestamptz,
+  unique (session_id, signal_id)
+);
+
+create index if not exists watchlist_items_session_created_idx
+  on public.watchlist_items (session_id, created_at desc);
+
+create index if not exists watchlist_items_signal_idx
+  on public.watchlist_items (signal_id);
+
+create index if not exists watchlist_items_threshold_idx
+  on public.watchlist_items (alert_threshold);
+
+alter table public.watchlist_items enable row level security;
+
+create policy "Public read watchlist items by session id"
+  on public.watchlist_items for select
+  using (true);
+
+create policy "Public insert watchlist items with session id"
+  on public.watchlist_items for insert
+  with check (length(trim(session_id)) > 0);
+
+create policy "Public update watchlist items with session id"
+  on public.watchlist_items for update
+  using (length(trim(session_id)) > 0)
+  with check (length(trim(session_id)) > 0);
+
+create policy "Public delete watchlist items with session id"
+  on public.watchlist_items for delete
+  using (length(trim(session_id)) > 0);
+```
+
+Manual watchlist test:
+
+1. Run the SQL schema and confirm `trend_signals` has rows.
+2. Start the app with `npm run dev`.
+3. Open `/feed` and click `Add to Watchlist` on a signal.
+4. Confirm the button changes to `Watching`.
+5. Open `/watchlist` and confirm the same signal appears from Supabase.
+6. Change the alert threshold below the signal score and confirm `Threshold triggered` appears.
+7. Raise the threshold above the signal score and confirm only non-threshold badges remain.
+8. Open `/briefing`; it should say `Watchlist` when watched items exist.
+9. Remove all watched items and reload `/briefing`; it should use the global feed or mock fallback.
 
 ### Run or seed signals
 

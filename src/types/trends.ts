@@ -40,17 +40,12 @@ export interface TrendSignal {
 
 export interface WatchlistItem {
   id: string;
-  user_id: string;
-  niche: string;
-  category: TrendCategory | null;
-  score: number;
-  last_score: number;
-  direction: TrendDirection;
+  session_id: string;
+  signal_id: string;
   alert_threshold: number;
-  notes: string;
   created_at: string;
-  last_updated: string;
-  report_id: string | null;
+  last_alerted_at: string | null;
+  signal: TrendSignal;
 }
 
 export interface BriefingItem {

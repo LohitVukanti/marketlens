@@ -1,10 +1,15 @@
 // src/app/briefing/page.tsx — Daily AI Briefing (habit loop engine)
 "use client";
+import { useEffect, useMemo, useState } from "react";
 import AppShell from "@/components/layout/AppShell";
-import { getMockBriefing, CATEGORY_ICONS } from "@/lib/trend-data";
+import { CATEGORY_ICONS, TREND_SIGNALS } from "@/lib/trend-data";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { mapTrendSignalRow, type TrendSignalRow } from "@/lib/trend-mapper";
+import { getAnonymousSessionId, getWatchlistItems } from "@/lib/watchlist";
+import type { BriefingItem, TrendSignal } from "@/types";
 import Link from "next/link";
 
-function BriefingItemCard({ item }: { item: ReturnType<typeof getMockBriefing>["items"][0] }) {
+function BriefingItemCard({ item }: { item: BriefingItem }) {
   const config = {
     opportunity: { icon: "🎯", border: "#10b981", bg: "rgba(16,185,129,0.06)" },
     alert:       { icon: "⚡", border: "#f59e0b", bg: "rgba(245,158,11,0.06)" },
@@ -42,10 +47,91 @@ function BriefingItemCard({ item }: { item: ReturnType<typeof getMockBriefing>["
 }
 
 export default function BriefingPage() {
-  const briefing = getMockBriefing();
+  const [signals, setSignals] = useState<TrendSignal[]>([]);
+  const [source, setSource] = useState<"watchlist" | "global" | "mock">("mock");
+  const [loading, setLoading] = useState(true);
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const briefing = useMemo(() => {
+    const selectedSignals = signals.length ? signals : TREND_SIGNALS.slice(0, 5);
+    const opportunityOfDay = [...selectedSignals].sort((a, b) => b.score - a.score)[0];
+    const breakouts = selectedSignals.filter((signal) => signal.direction === "breakout");
+    const risers = selectedSignals.filter((signal) => signal.weeklyChange >= 10 || signal.momentum >= 15);
+    const cooling = selectedSignals.filter((signal) => signal.direction === "falling" || signal.weeklyChange < 0);
+    const topNames = selectedSignals.slice(0, 2).map((signal) => signal.name).join(" · ");
+
+    const items: BriefingItem[] = selectedSignals.slice(0, 5).map((signal) => ({
+      type:
+        signal.score >= 80
+          ? "opportunity"
+          : signal.direction === "falling"
+            ? "risk"
+            : signal.weeklyChange >= 10
+              ? "alert"
+              : "trend",
+      title: `${signal.name} — ${signal.direction === "breakout" ? "Breakout Detected" : signal.weeklyChange >= 10 ? "Rising Fast" : "Signal Update"}`,
+      body: signal.summary,
+      score: signal.score,
+      delta: signal.weeklyChange,
+      niche: signal.niche,
+    }));
+
+    return {
+      headline:
+        source === "watchlist"
+          ? `Your watched niches: ${topNames}`
+          : `Top global opportunities: ${topNames}`,
+      summary:
+        source === "watchlist"
+          ? `${selectedSignals.length} watched signal${selectedSignals.length > 1 ? "s" : ""} are in today's briefing. ${breakouts.length} breakout, ${risers.length} rising fast, ${cooling.length} cooling.`
+          : `No watchlist found for this session, so today's briefing uses the highest-scoring global trend signals. ${breakouts.length} breakout signal${breakouts.length === 1 ? "" : "s"} are active.`,
+      items,
+      opportunityOfDay,
+    };
+  }, [signals, source]);
   const opp = briefing.opportunityOfDay;
   const oppColor = opp.score >= 80 ? "#10b981" : "#f59e0b";
+
+  useEffect(() => {
+    const sessionId = getAnonymousSessionId();
+
+    async function loadBriefingSignals() {
+      try {
+        const watchedItems = await getWatchlistItems(sessionId);
+        if (watchedItems.length > 0) {
+          setSignals(watchedItems.map((item) => item.signal));
+          setSource("watchlist");
+          return;
+        }
+
+        if (isSupabaseConfigured()) {
+          const { data, error } = await supabase
+            .from("trend_signals")
+            .select("*")
+            .order("opportunity_score", { ascending: false })
+            .limit(5);
+
+          if (error) throw error;
+
+          if (data?.length) {
+            setSignals((data as TrendSignalRow[]).map(mapTrendSignalRow));
+            setSource("global");
+            return;
+          }
+        }
+
+        setSignals(TREND_SIGNALS.slice(0, 5));
+        setSource("mock");
+      } catch (error) {
+        console.warn("[briefing] Falling back to mock briefing signals:", error);
+        setSignals(TREND_SIGNALS.slice(0, 5));
+        setSource("mock");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadBriefingSignals();
+  }, []);
 
   return (
     <AppShell title="Daily Briefing" subtitle={today}>
@@ -58,6 +144,9 @@ export default function BriefingPage() {
           <span className="live-dot" />
           <span className="text-xs font-semibold" style={{ color: "var(--accent-bright)" }}>
             AI-Generated · {today}
+          </span>
+          <span className="badge badge-gray text-[10px]">
+            {loading ? "Loading" : source === "watchlist" ? "Watchlist" : source === "global" ? "Global feed" : "Mock fallback"}
           </span>
         </div>
         <h2 className="text-lg font-bold mb-2" style={{ color: "var(--text-primary)" }}>
