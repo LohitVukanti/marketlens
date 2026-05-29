@@ -4,6 +4,7 @@
 // ============================================================
 
 export type TrendDirection = "rising" | "falling" | "stable" | "breakout";
+export type TrendState = "emerging" | "rising" | "breakout" | "cooling" | "saturated";
 export type TrendCategory =
   | "home-decor" | "apparel" | "beauty" | "food-beverage"
   | "digital-products" | "pets" | "fitness" | "jewelry"
@@ -11,11 +12,20 @@ export type TrendCategory =
 
 export interface TrendSignal {
   id: string;
+  keyword?: string;
   name: string;
   niche: string;
   category: TrendCategory;
   score: number;
+  opportunityScore?: number;
   momentum: number;
+  velocityScore?: number;
+  accelerationScore?: number;
+  confidenceScore?: number;
+  currentTrendValue?: number;
+  baselineTrendValue?: number;
+  trendState?: TrendState;
+  signalSource?: "google_trends" | "fallback_seed" | "mock";
   direction: TrendDirection;
   weeklyChange: number;
   searchVolume: string;

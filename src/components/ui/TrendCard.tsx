@@ -105,6 +105,12 @@ export default function TrendCard({ signal, onWatch }: {
         <span className={`badge ${comp.cls} text-[10px]`}>{comp.label}</span>
         <span className="badge badge-gray text-[10px]">Avg {signal.avgPrice}</span>
         <span className="badge badge-gray text-[10px]">Vol: {signal.searchVolume}</span>
+        {typeof signal.confidenceScore === "number" && (
+          <span className="badge badge-gray text-[10px]">Conf: {signal.confidenceScore}</span>
+        )}
+        {signal.trendState && (
+          <span className="badge badge-blue text-[10px]">{signal.trendState}</span>
+        )}
         {signal.platforms.map(p => (
           <span key={p} className="badge badge-purple text-[10px]">{p}</span>
         ))}

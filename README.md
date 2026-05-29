@@ -151,6 +151,69 @@ This loads a fully rendered sample report (handmade soy candle business in Tampa
 
 ---
 
+## Phase 1 Signal Engine
+
+MarketLens now has a real trend signal path for `/feed`:
+
+- `trend_signals` stores the latest product opportunity signals.
+- `signal_history` stores each collector snapshot.
+- `collection_jobs` records collector runs and fallback reasons.
+- `/feed` reads Supabase first and falls back to the original mock feed only when Supabase is not configured, the query fails, or there are no rows.
+
+### Required env vars
+
+The report generator still uses the AI env vars above. The signal collector requires:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+```
+
+Do not expose `SUPABASE_SERVICE_ROLE_KEY` in the browser. It is only used by server-side code and local scripts.
+
+### Create the Supabase tables
+
+Run the full contents of `scripts/supabase-schema.sql` in the Supabase SQL Editor. It preserves the existing `reports` table setup and adds:
+
+- `trend_signals`
+- `signal_history`
+- `collection_jobs`
+
+### Run or seed signals
+
+```bash
+npm run signals:update
+```
+
+This command tries to collect US Google Trends data through local Python `pytrends`. If `pytrends`, Python, network access, or Google Trends fails, the script upserts deterministic fallback seed signals so the platform remains demo-safe.
+
+Optional local Google Trends dependency:
+
+```bash
+python3 -m pip install pytrends
+```
+
+`npm run seed:signals` is an alias for the same safe collector.
+
+### Verify `/feed` is using real data
+
+1. Run the SQL schema in Supabase.
+2. Confirm `.env.local` has the three Supabase variables above.
+3. Run `npm run signals:update`.
+4. Start the app with `npm run dev`.
+5. Open `/feed` and look for the source label in the filter bar:
+   - `Supabase live` means rows came from `trend_signals`.
+   - `Mock fallback` means Supabase returned no usable signal rows.
+
+### Deploy on Vercel safely
+
+No scheduled jobs are required for Phase 1. Add the same Supabase env vars in Vercel and deploy normally. The app will read `trend_signals` at request time. Run `npm run signals:update` locally whenever you want to refresh signals, or later move that command into a scheduled job in Phase 2.
+
+Do not run the Python collector inside the Next.js request path; it belongs in `/scripts` so Vercel builds and page requests stay stable.
+
+---
+
 ## Deployment (Vercel — Recommended)
 
 ### 1. Push to GitHub

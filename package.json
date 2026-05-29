@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "db:seed": "npx ts-node --project tsconfig.json -e \"require('./scripts/seed').seed()\""
+    "db:seed": "npx ts-node --project tsconfig.json -e \"require('./scripts/seed').seed()\"",
+    "signals:update": "node scripts/signals/update-signals.mjs",
+    "seed:signals": "node scripts/signals/update-signals.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",

@@ -1,0 +1,180 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import AppShell from "@/components/layout/AppShell";
+import TrendCard from "@/components/ui/TrendCard";
+import { CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/trend-data";
+import type { TrendDirection, TrendSignal } from "@/types";
+
+const DIRECTIONS: { value: TrendDirection | "all"; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "breakout", label: "Breakout" },
+  { value: "rising", label: "Rising" },
+  { value: "stable", label: "Stable" },
+  { value: "falling", label: "Cooling" },
+];
+
+const SORTS = [
+  { value: "score", label: "Opportunity Score" },
+  { value: "momentum", label: "Momentum" },
+  { value: "new", label: "Newest" },
+];
+
+export default function FeedClient({
+  signals,
+  dataSource,
+}: {
+  signals: TrendSignal[];
+  dataSource: "supabase" | "mock";
+}) {
+  const [dirFilter, setDirFilter] = useState<string>("all");
+  const [catFilter, setCatFilter] = useState<string>("all");
+  const [sort, setSort] = useState("score");
+  const [search, setSearch] = useState("");
+  const [watching, setWatching] = useState<Set<string>>(new Set());
+
+  const categories = useMemo(() => {
+    return Array.from(new Set(signals.map((signal) => signal.category)));
+  }, [signals]);
+
+  const filtered = useMemo(() => {
+    let next = [...signals];
+    if (dirFilter !== "all") next = next.filter((trend) => trend.direction === dirFilter);
+    if (catFilter !== "all") next = next.filter((trend) => trend.category === catFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      next = next.filter(
+        (trend) =>
+          trend.name.toLowerCase().includes(q) ||
+          trend.niche.toLowerCase().includes(q) ||
+          trend.tags.some((tag) => tag.toLowerCase().includes(q))
+      );
+    }
+    if (sort === "score") next.sort((a, b) => b.score - a.score);
+    if (sort === "momentum") next.sort((a, b) => b.momentum - a.momentum);
+    if (sort === "new") {
+      next.sort(
+        (a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime()
+      );
+    }
+    return next;
+  }, [dirFilter, catFilter, sort, search, signals]);
+
+  const breakouts = signals.filter((signal) => signal.direction === "breakout").length;
+  const avgScore = signals.length
+    ? Math.round(signals.reduce((sum, trend) => sum + trend.score, 0) / signals.length)
+    : 0;
+
+  function handleWatch(signal: TrendSignal) {
+    setWatching((prev) => {
+      const next = new Set(prev);
+      if (next.has(signal.id)) next.delete(signal.id);
+      else next.add(signal.id);
+      return next;
+    });
+  }
+
+  return (
+    <AppShell title="Trend Feed" subtitle="Live ecommerce opportunity signals · Updated manually in Phase 1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {[
+          { label: "Signals Tracked", value: signals.length, color: "var(--accent-bright)" },
+          { label: "Breakout Niches", value: breakouts, color: "#10b981" },
+          { label: "Avg Opp. Score", value: avgScore, color: "#f59e0b" },
+          { label: "Watching", value: watching.size, color: "#818cf8" },
+        ].map((stat) => (
+          <div key={stat.label} className="card p-4">
+            <p className="text-[11px] mb-1 font-medium" style={{ color: "var(--text-muted)" }}>
+              {stat.label}
+            </p>
+            <p className="text-2xl font-bold mono" style={{ color: stat.color }}>
+              {stat.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="card p-4 mb-6 flex flex-wrap gap-3 items-center">
+        <input
+          className="input-base flex-1 min-w-40 text-xs py-2"
+          placeholder="Search niches, tags, categories..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+
+        <div className="flex gap-1.5 flex-wrap">
+          {DIRECTIONS.map((direction) => (
+            <button
+              key={direction.value}
+              onClick={() => setDirFilter(direction.value)}
+              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
+                dirFilter === direction.value ? "text-white" : ""
+              }`}
+              style={
+                dirFilter === direction.value
+                  ? { background: "var(--accent)" }
+                  : { background: "var(--bg-hover)", color: "var(--text-muted)" }
+              }
+            >
+              {direction.label}
+            </button>
+          ))}
+        </div>
+
+        <select
+          className="input-base text-xs py-2 w-auto"
+          value={catFilter}
+          onChange={(event) => setCatFilter(event.target.value)}
+        >
+          <option value="all">All Categories</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {CATEGORY_ICONS[category]} {CATEGORY_LABELS[category]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="input-base text-xs py-2 w-auto"
+          value={sort}
+          onChange={(event) => setSort(event.target.value)}
+        >
+          {SORTS.map((sortOption) => (
+            <option key={sortOption.value} value={sortOption.value}>
+              Sort: {sortOption.label}
+            </option>
+          ))}
+        </select>
+
+        <span className="text-xs ml-auto" style={{ color: "var(--text-muted)" }}>
+          {filtered.length} results · {dataSource === "supabase" ? "Supabase live" : "Mock fallback"}
+        </span>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-20" style={{ color: "var(--text-muted)" }}>
+          <p className="text-sm">No signals match your filters.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((signal) => (
+            <TrendCard key={signal.id} signal={signal} onWatch={handleWatch} />
+          ))}
+        </div>
+      )}
+
+      <div
+        className="mt-8 rounded-2xl border p-6 text-center"
+        style={{ borderColor: "rgba(99,102,241,0.3)", background: "rgba(99,102,241,0.05)" }}
+      >
+        <p className="text-sm font-semibold mb-1" style={{ color: "var(--accent-bright)" }}>
+          Pro unlocks real-time alerts, full trend history, and additional signals
+        </p>
+        <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
+          Phase 1 uses Google Trends plus Supabase. Monetization is intentionally not wired yet.
+        </p>
+        <button className="btn-primary text-sm px-6 py-2.5">Upgrade to Pro</button>
+      </div>
+    </AppShell>
+  );
+}

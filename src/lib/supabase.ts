@@ -7,10 +7,15 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const fallbackSupabaseUrl = "https://placeholder.supabase.co";
+const fallbackSupabaseKey = "placeholder-anon-key";
 
 // ---- Client-side Supabase instance (uses anon key) ----------
 // Safe to use in browser components. Respects Row Level Security.
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+  supabaseUrl || fallbackSupabaseUrl,
+  supabaseAnonKey || fallbackSupabaseKey
+);
 
 // ---- Server-side Supabase instance (uses service role key) --
 // Only use in API routes / Server Components. Bypasses RLS.
@@ -25,8 +30,8 @@ export function createServerSupabase() {
   }
 
   return createClient(
-    supabaseUrl,
-    serviceRoleKey || supabaseAnonKey,
+    supabaseUrl || fallbackSupabaseUrl,
+    serviceRoleKey || supabaseAnonKey || fallbackSupabaseKey,
     {
       auth: {
         // Disable auto session refresh in server context
@@ -39,5 +44,10 @@ export function createServerSupabase() {
 
 /** Returns true if Supabase is configured (both env vars present) */
 export function isSupabaseConfigured(): boolean {
-  return Boolean(supabaseUrl && supabaseAnonKey);
+  return Boolean(
+    supabaseUrl &&
+      supabaseAnonKey &&
+      !supabaseUrl.includes("your-project") &&
+      !supabaseAnonKey.includes("your_supabase")
+  );
 }
