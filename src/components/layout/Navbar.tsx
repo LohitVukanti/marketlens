@@ -11,6 +11,9 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/feed", label: "Trend Feed" },
+  { href: "/watchlist", label: "Watchlist" },
+  { href: "/briefing", label: "Briefing" },
   { href: "/analyze", label: "New Analysis" },
   { href: "/saved-reports", label: "Saved Reports" },
 ];
@@ -33,7 +36,7 @@ export default function Navbar() {
         </Link>
 
         {/* Nav links */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 overflow-x-auto max-w-[50vw] sm:max-w-none scrollbar-none">
           {NAV_LINKS.map(({ href, label }) => {
             const isActive = pathname === href;
             return (
@@ -41,7 +44,7 @@ export default function Navbar() {
                 key={href}
                 href={href}
                 className={cn(
-                  "px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                  "px-2.5 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-150 whitespace-nowrap flex-shrink-0",
                   isActive
                     ? "text-brand-700 bg-brand-50"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"

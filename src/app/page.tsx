@@ -29,6 +29,30 @@ const STATS = [
   { n: "Free", label: "MVP Access" },
 ];
 
+const PLATFORM_LINKS = [
+  {
+    href: "/feed",
+    icon: "◈",
+    title: "Trend Feed",
+    desc: "Browse live ecommerce opportunity signals ranked by our 5-factor scoring model.",
+    badge: "Live",
+  },
+  {
+    href: "/watchlist",
+    icon: "☆",
+    title: "Watchlist",
+    desc: "Track niches you care about and spot score changes before everyone else.",
+    badge: null,
+  },
+  {
+    href: "/briefing",
+    icon: "◎",
+    title: "Daily Briefing",
+    desc: "Get a morning intelligence summary: top movers, alerts, and one deep-dive pick.",
+    badge: "New",
+  },
+];
+
 export default function LandingPage() {
   return (
     <>
@@ -61,13 +85,30 @@ export default function LandingPage() {
               Get a complete market intelligence report for any business idea — competitor analysis, pricing strategy, demand trends, and a step-by-step action plan — in under 60 seconds.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
               <Link href="/analyze" className="btn-primary text-base px-8 py-4 shadow-lg">
                 Generate Free Report →
               </Link>
               <Link href="/analyze?mock=true" className="btn-secondary text-base px-6 py-4">
                 See Example Report
               </Link>
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-center mb-6">
+              {PLATFORM_LINKS.map(({ href, title, badge }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 transition-all"
+                >
+                  {title}
+                  {badge && (
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-brand-100 text-brand-700">
+                      {badge}
+                    </span>
+                  )}
+                </Link>
+              ))}
             </div>
 
             <p className="text-xs text-slate-400">
@@ -118,6 +159,45 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Platform ──────────────────────────────────────── */}
+        <section className="py-16 bg-surface-secondary border-y border-slate-100">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
+            <div className="text-center mb-10">
+              <h2 className="font-serif text-3xl sm:text-4xl text-slate-900 mb-3">
+                Explore the intelligence platform
+              </h2>
+              <p className="text-slate-500 max-w-xl mx-auto">
+                Check trends daily, track your niches, and read your morning briefing — no report required.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {PLATFORM_LINKS.map(({ href, icon, title, desc, badge }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="card p-6 hover:shadow-card-hover transition-all group flex flex-col"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <span className="text-3xl">{icon}</span>
+                    {badge && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-brand-100 text-brand-700">
+                        {badge}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-sans font-semibold text-slate-800 mb-2 group-hover:text-brand-700 transition-colors">
+                    {title}
+                  </h3>
+                  <p className="text-sm text-slate-500 flex-1">{desc}</p>
+                  <span className="mt-4 text-sm font-semibold text-brand-700 group-hover:text-brand-800">
+                    Open {title} →
+                  </span>
+                </Link>
+              ))}
             </div>
           </div>
         </section>
