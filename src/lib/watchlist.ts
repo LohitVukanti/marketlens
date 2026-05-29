@@ -3,13 +3,22 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mapTrendSignalRow, type TrendSignalRow } from "@/lib/trend-mapper";
 import type { WatchlistItem } from "@/types";
+import type { MarketLensPlan } from "@/lib/auth";
 
 const SESSION_STORAGE_KEY = "marketlens_session_id";
 const DEFAULT_ALERT_THRESHOLD = 80;
+export const FREE_WATCHLIST_LIMIT = 3;
+
+export type WatchlistOwner = {
+  sessionId: string;
+  userId?: string | null;
+  plan?: MarketLensPlan;
+};
 
 type WatchlistItemRow = {
   id: string;
   session_id: string;
+  user_id: string | null;
   signal_id: string;
   alert_threshold: number;
   created_at: string;
@@ -32,63 +41,93 @@ export function getAnonymousSessionId() {
   return id;
 }
 
-export async function getWatchedSignalIds(sessionId: string) {
-  if (!isSupabaseConfigured() || !sessionId) return new Set<string>();
+function ownerFilter(query: any, owner: WatchlistOwner) {
+  if (owner.userId) return query.eq("user_id", owner.userId);
+  return query.eq("session_id", owner.sessionId).is("user_id", null);
+}
 
-  const { data, error } = await supabase
+function ownerPayload(owner: WatchlistOwner, signalId: string, alertThreshold = DEFAULT_ALERT_THRESHOLD) {
+  return {
+    session_id: owner.sessionId,
+    user_id: owner.userId ?? null,
+    signal_id: signalId,
+    alert_threshold: alertThreshold,
+  };
+}
+
+export async function getWatchedSignalIds(owner: WatchlistOwner): Promise<Set<string>> {
+  if (!isSupabaseConfigured() || (!owner.sessionId && !owner.userId)) return new Set<string>();
+
+  const query = supabase
     .from("watchlist_items")
-    .select("signal_id")
-    .eq("session_id", sessionId);
+    .select("signal_id");
+  const { data, error } = await ownerFilter(query, owner);
 
   if (error) throw error;
-  return new Set((data ?? []).map((item) => item.signal_id as string));
+  return new Set((data ?? []).map((item: { signal_id: string }) => item.signal_id));
+}
+
+export async function getWatchlistCount(owner: WatchlistOwner) {
+  if (!isSupabaseConfigured() || (!owner.sessionId && !owner.userId)) return 0;
+
+  const query = supabase
+    .from("watchlist_items")
+    .select("id", { count: "exact", head: true });
+  const { count, error } = await ownerFilter(query, owner);
+
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function addWatchlistItem(
-  sessionId: string,
+  owner: WatchlistOwner,
   signalId: string,
   alertThreshold = DEFAULT_ALERT_THRESHOLD
 ) {
+  if (owner.plan !== "pro") {
+    const watched = await getWatchedSignalIds(owner);
+    if (!watched.has(signalId) && watched.size >= FREE_WATCHLIST_LIMIT) {
+      throw new Error(`Free plan watchlists are limited to ${FREE_WATCHLIST_LIMIT} signals.`);
+    }
+  }
+
+  const onConflict = owner.userId ? "user_id,signal_id" : "session_id,signal_id";
   const { error } = await supabase.from("watchlist_items").upsert(
-    {
-      session_id: sessionId,
-      signal_id: signalId,
-      alert_threshold: alertThreshold,
-    },
-    { onConflict: "session_id,signal_id" }
+    ownerPayload(owner, signalId, alertThreshold),
+    { onConflict }
   );
 
   if (error) throw error;
 }
 
-export async function removeWatchlistItem(sessionId: string, signalId: string) {
-  const { error } = await supabase
+export async function removeWatchlistItem(owner: WatchlistOwner, signalId: string) {
+  const query = supabase
     .from("watchlist_items")
     .delete()
-    .eq("session_id", sessionId)
     .eq("signal_id", signalId);
+  const { error } = await ownerFilter(query, owner);
 
   if (error) throw error;
 }
 
-export async function getWatchlistItems(sessionId: string): Promise<WatchlistItem[]> {
-  if (!isSupabaseConfigured() || !sessionId) return [];
+export async function getWatchlistItems(owner: WatchlistOwner): Promise<WatchlistItem[]> {
+  if (!isSupabaseConfigured() || (!owner.sessionId && !owner.userId)) return [];
 
-  const { data, error } = await supabase
+  const query = supabase
     .from("watchlist_items")
     .select(
       `
       id,
       session_id,
+      user_id,
       signal_id,
       alert_threshold,
       created_at,
       last_alerted_at,
       trend_signals (*)
     `
-    )
-    .eq("session_id", sessionId)
-    .order("created_at", { ascending: false });
+    );
+  const { data, error } = await ownerFilter(query, owner).order("created_at", { ascending: false });
 
   if (error) throw error;
 
@@ -103,6 +142,7 @@ export async function getWatchlistItems(sessionId: string): Promise<WatchlistIte
       return {
         id: item.id,
         session_id: item.session_id,
+        user_id: item.user_id,
         signal_id: item.signal_id,
         alert_threshold: item.alert_threshold,
         created_at: item.created_at,
@@ -115,14 +155,45 @@ export async function getWatchlistItems(sessionId: string): Promise<WatchlistIte
 
 export async function updateWatchlistThreshold(
   itemId: string,
-  sessionId: string,
+  owner: WatchlistOwner,
   alertThreshold: number
 ) {
-  const { error } = await supabase
+  const query = supabase
     .from("watchlist_items")
     .update({ alert_threshold: alertThreshold })
-    .eq("id", itemId)
-    .eq("session_id", sessionId);
+    .eq("id", itemId);
+  const { error } = await ownerFilter(query, owner);
 
   if (error) throw error;
+}
+
+export async function migrateAnonymousWatchlistToUser(sessionId: string, userId: string) {
+  if (!isSupabaseConfigured() || !sessionId || !userId) return;
+
+  const anonymousItems = await getWatchlistItems({ sessionId });
+  if (!anonymousItems.length) return;
+  const userSignalIds = await getWatchedSignalIds({ sessionId, userId });
+
+  for (const item of anonymousItems) {
+    if (userSignalIds.has(item.signal_id)) {
+      const { error: deleteDuplicateError } = await supabase
+        .from("watchlist_items")
+        .delete()
+        .eq("id", item.id)
+        .eq("session_id", sessionId)
+        .is("user_id", null);
+
+      if (deleteDuplicateError) throw deleteDuplicateError;
+      continue;
+    }
+
+    const { error: updateError } = await supabase
+      .from("watchlist_items")
+      .update({ user_id: userId })
+      .eq("id", item.id)
+      .eq("session_id", sessionId)
+      .is("user_id", null);
+
+    if (updateError) throw updateError;
+  }
 }

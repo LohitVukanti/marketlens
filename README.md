@@ -194,6 +194,7 @@ For an existing Phase 1 database, run these migrations in order:
 
 1. `scripts/phase-2-watchlist-items.sql`
 2. `scripts/phase-a-b-signal-enrichment.sql`
+3. `scripts/phase-3-monetization-foundation.sql`
 
 The signal enrichment migration adds:
 
@@ -292,6 +293,55 @@ Manual watchlist test:
 7. Raise the threshold above the signal score and confirm only non-threshold badges remain.
 8. Open `/briefing`; it should say `Watchlist` when watched items exist.
 9. Remove all watched items and reload `/briefing`; it should use the global feed or mock fallback.
+
+### Phase 3 Auth and Monetization Foundation
+
+Phase 3 adds Supabase email/password auth and a simple plan model without requiring payment:
+
+- Guests keep anonymous watchlists through `localStorage` session IDs.
+- Logged-in users get a `profiles` row with `plan = free` by default.
+- When a user logs in, the browser migrates anonymous watchlist rows from the current `session_id` into that user's `user_id`.
+- `/watchlist` and `/briefing` load by `user_id` for logged-in users, otherwise by anonymous `session_id`.
+- Free users and guests can watch up to 3 trend signals.
+- Pro users have unlimited watchlist capacity. Pro can be enabled manually by updating `profiles.plan = 'pro'`.
+- `/upgrade` defines the $19/month Pro offer, but Stripe checkout is intentionally disabled.
+
+Run `scripts/phase-3-monetization-foundation.sql` to add:
+
+- `profiles`: `user_id`, `plan`, alert preference placeholders, `created_at`
+- `alert_preferences`: future daily briefing and email alert preferences
+- `watchlist_items.user_id`
+- user-owned and guest-compatible RLS policies
+
+Auth uses the existing public Supabase browser client. Do not expose `SUPABASE_SERVICE_ROLE_KEY` to the frontend.
+
+Manual auth/plan test:
+
+1. Run the Phase 3 SQL migration.
+2. In Supabase Auth settings, ensure email/password auth is enabled.
+3. Start the app with `npm run dev`.
+4. As a guest, add up to 3 items from `/feed`.
+5. Open `/login`, create an account or log in.
+6. Confirm `/watchlist` still shows the previously anonymous watched items.
+7. Try to add a fourth watched signal as a Free user and confirm the limit message.
+8. In Supabase SQL, set your profile to Pro:
+
+```sql
+update public.profiles
+set plan = 'pro'
+where user_id = auth.uid();
+```
+
+For manual SQL outside an authenticated SQL context, use the user's UUID from Auth:
+
+```sql
+update public.profiles
+set plan = 'pro'
+where user_id = '00000000-0000-0000-0000-000000000000';
+```
+
+9. Reload the app and confirm the sidebar shows Pro and watchlist additions are unlimited.
+10. Open `/upgrade` and confirm the Stripe placeholder offer is visible.
 
 ### Run or seed signals
 

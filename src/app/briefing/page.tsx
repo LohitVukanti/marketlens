@@ -5,7 +5,8 @@ import AppShell from "@/components/layout/AppShell";
 import { CATEGORY_ICONS, TREND_SIGNALS } from "@/lib/trend-data";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mapTrendSignalRow, type TrendSignalRow } from "@/lib/trend-mapper";
-import { getAnonymousSessionId, getWatchlistItems } from "@/lib/watchlist";
+import { getAnonymousSessionId, getWatchlistItems, migrateAnonymousWatchlistToUser, type WatchlistOwner } from "@/lib/watchlist";
+import { getCurrentUser, getOrCreateProfile } from "@/lib/auth";
 import type { BriefingItem, TrendSignal } from "@/types";
 import Link from "next/link";
 
@@ -96,7 +97,16 @@ export default function BriefingPage() {
 
     async function loadBriefingSignals() {
       try {
-        const watchedItems = await getWatchlistItems(sessionId);
+        const user = await getCurrentUser();
+        let owner: WatchlistOwner = { sessionId, plan: "free" };
+
+        if (user) {
+          const profile = await getOrCreateProfile(user.id);
+          await migrateAnonymousWatchlistToUser(sessionId, user.id);
+          owner = { sessionId, userId: user.id, plan: profile.plan };
+        }
+
+        const watchedItems = await getWatchlistItems(owner);
         if (watchedItems.length > 0) {
           setSignals(watchedItems.map((item) => item.signal));
           setSource("watchlist");

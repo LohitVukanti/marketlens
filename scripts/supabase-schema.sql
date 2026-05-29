@@ -197,15 +197,64 @@ create policy "Service role writes collection jobs"
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
 
--- ---- Anonymous watchlists ----------------------------------
+-- ---- Profiles and alert preferences -------------------------
+create table if not exists public.profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  plan text not null default 'free' check (plan in ('free', 'pro')),
+  daily_briefing_enabled boolean not null default true,
+  email_alerts_enabled boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+create policy "Users read own profile"
+  on public.profiles for select
+  using (auth.uid() = user_id);
+
+create policy "Users insert own profile"
+  on public.profiles for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users update own profile"
+  on public.profiles for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create table if not exists public.alert_preferences (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  daily_briefing_enabled boolean not null default true,
+  email_alerts_enabled boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.alert_preferences enable row level security;
+
+create policy "Users read own alert preferences"
+  on public.alert_preferences for select
+  using (auth.uid() = user_id);
+
+create policy "Users insert own alert preferences"
+  on public.alert_preferences for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users update own alert preferences"
+  on public.alert_preferences for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- ---- Anonymous and user-owned watchlists --------------------
 create table if not exists public.watchlist_items (
   id                uuid primary key default gen_random_uuid(),
   session_id        text not null check (length(trim(session_id)) > 0),
+  user_id           uuid references auth.users(id) on delete cascade,
   signal_id         text not null references public.trend_signals(id) on delete cascade,
   alert_threshold   integer not null default 80 check (alert_threshold between 0 and 100),
   created_at        timestamptz not null default now(),
   last_alerted_at   timestamptz,
-  unique (session_id, signal_id)
+  unique (session_id, signal_id),
+  unique (user_id, signal_id)
 );
 
 create index if not exists watchlist_items_session_created_idx
@@ -217,27 +266,42 @@ create index if not exists watchlist_items_signal_idx
 create index if not exists watchlist_items_threshold_idx
   on public.watchlist_items (alert_threshold);
 
+create index if not exists watchlist_items_user_created_idx
+  on public.watchlist_items (user_id, created_at desc);
+
 alter table public.watchlist_items enable row level security;
 
--- MVP access: the app stores an anonymous session_id in localStorage and
--- filters every watchlist query by that value. Full auth should replace
--- these public policies in Phase 3.
-create policy "Public read watchlist items by session id"
+create policy "Watchlist select owner or guest"
   on public.watchlist_items for select
-  using (true);
+  using (
+    auth.uid() = user_id
+    or (user_id is null and length(trim(session_id)) > 0)
+  );
 
-create policy "Public insert watchlist items with session id"
+create policy "Watchlist insert owner or guest"
   on public.watchlist_items for insert
-  with check (length(trim(session_id)) > 0);
+  with check (
+    (auth.uid() = user_id and length(trim(session_id)) > 0)
+    or (user_id is null and length(trim(session_id)) > 0)
+  );
 
-create policy "Public update watchlist items with session id"
+create policy "Watchlist update owner or guest"
   on public.watchlist_items for update
-  using (length(trim(session_id)) > 0)
-  with check (length(trim(session_id)) > 0);
+  using (
+    auth.uid() = user_id
+    or (user_id is null and length(trim(session_id)) > 0)
+  )
+  with check (
+    (auth.uid() = user_id and length(trim(session_id)) > 0)
+    or (user_id is null and length(trim(session_id)) > 0)
+  );
 
-create policy "Public delete watchlist items with session id"
+create policy "Watchlist delete owner or guest"
   on public.watchlist_items for delete
-  using (length(trim(session_id)) > 0);
+  using (
+    auth.uid() = user_id
+    or (user_id is null and length(trim(session_id)) > 0)
+  );
 
 -- ============================================================
 -- PRODUCTION UPGRADE PATH (add when you implement auth):

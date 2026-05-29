@@ -62,6 +62,7 @@ export interface TrendSignal {
 export interface WatchlistItem {
   id: string;
   session_id: string;
+  user_id: string | null;
   signal_id: string;
   alert_threshold: number;
   created_at: string;

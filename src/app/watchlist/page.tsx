@@ -6,11 +6,15 @@ import Link from "next/link";
 import AppShell from "@/components/layout/AppShell";
 import { CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/trend-data";
 import {
+  FREE_WATCHLIST_LIMIT,
   getAnonymousSessionId,
   getWatchlistItems,
+  migrateAnonymousWatchlistToUser,
   removeWatchlistItem,
   updateWatchlistThreshold,
+  type WatchlistOwner,
 } from "@/lib/watchlist";
+import { getCurrentUser, getOrCreateProfile } from "@/lib/auth";
 import type { WatchlistItem } from "@/types";
 
 function alertBadges(item: WatchlistItem) {
@@ -114,17 +118,28 @@ function WatchRow({
 }
 
 export default function WatchlistPage() {
-  const [sessionId, setSessionId] = useState("");
+  const [owner, setOwner] = useState<WatchlistOwner | null>(null);
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const nextSessionId = getAnonymousSessionId();
-    setSessionId(nextSessionId);
+    async function loadWatchlist() {
+      const sessionId = getAnonymousSessionId();
+      const user = await getCurrentUser();
+      let nextOwner: WatchlistOwner = { sessionId, plan: "free" };
 
-    getWatchlistItems(nextSessionId)
-      .then(setItems)
+      if (user) {
+        const profile = await getOrCreateProfile(user.id);
+        await migrateAnonymousWatchlistToUser(sessionId, user.id);
+        nextOwner = { sessionId, userId: user.id, plan: profile.plan };
+      }
+
+      setOwner(nextOwner);
+      setItems(await getWatchlistItems(nextOwner));
+    }
+
+    loadWatchlist()
       .catch((loadError) => {
         console.warn("[watchlist] Unable to load watchlist:", loadError.message);
         setError("Unable to load your watchlist. Confirm the Supabase watchlist_items table exists.");
@@ -138,9 +153,10 @@ export default function WatchlistPage() {
   const alerts = useMemo(() => items.filter((item) => alertBadges(item).length > 0).length, [items]);
 
   async function handleRemove(item: WatchlistItem) {
+    if (!owner) return;
     setItems((prev) => prev.filter((nextItem) => nextItem.id !== item.id));
     try {
-      await removeWatchlistItem(sessionId, item.signal_id);
+      await removeWatchlistItem(owner, item.signal_id);
     } catch (removeError) {
       setItems((prev) => [item, ...prev]);
       setError(removeError instanceof Error ? removeError.message : "Unable to remove watchlist item.");
@@ -148,6 +164,7 @@ export default function WatchlistPage() {
   }
 
   async function handleThresholdChange(item: WatchlistItem, value: number) {
+    if (!owner) return;
     const alertThreshold = Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0));
     setItems((prev) =>
       prev.map((nextItem) =>
@@ -156,7 +173,7 @@ export default function WatchlistPage() {
     );
 
     try {
-      await updateWatchlistThreshold(item.id, sessionId, alertThreshold);
+      await updateWatchlistThreshold(item.id, owner, alertThreshold);
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Unable to update threshold.");
     }
@@ -173,7 +190,7 @@ export default function WatchlistPage() {
             {items.length}
           </p>
           <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-            anonymous session
+            {owner?.userId ? `${owner.plan === "pro" ? "Pro" : "Free"} account` : "guest session"}
           </p>
         </div>
         <div className="card p-4">
@@ -192,10 +209,27 @@ export default function WatchlistPage() {
             {alerts}
           </p>
           <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-            visual alerts only
+            {owner?.plan === "pro" ? "advanced soon" : "visual alerts only"}
           </p>
         </div>
       </div>
+
+      {owner?.plan !== "pro" && (
+        <div
+          className="rounded-xl p-3 mb-4 text-xs flex flex-wrap gap-2 items-center"
+          style={{ color: "var(--text-secondary)", border: "1px solid rgba(99,102,241,0.25)", background: "rgba(99,102,241,0.06)" }}
+        >
+          <span className="font-semibold" style={{ color: "var(--accent-bright)" }}>
+            Free plan:
+          </span>
+          <span>
+            {items.length}/{FREE_WATCHLIST_LIMIT} watched signals. Pro unlocks unlimited watchlists and advanced alert placeholders.
+          </span>
+          <Link href="/upgrade" className="ml-auto text-xs font-semibold" style={{ color: "var(--accent-bright)" }}>
+            Upgrade
+          </Link>
+        </div>
+      )}
 
       {alerts > 0 && (
         <div

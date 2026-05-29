@@ -6,10 +6,14 @@ import TrendCard from "@/components/ui/TrendCard";
 import { CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/trend-data";
 import {
   addWatchlistItem,
+  FREE_WATCHLIST_LIMIT,
   getAnonymousSessionId,
   getWatchedSignalIds,
+  migrateAnonymousWatchlistToUser,
   removeWatchlistItem,
+  type WatchlistOwner,
 } from "@/lib/watchlist";
+import { getCurrentUser, getOrCreateProfile } from "@/lib/auth";
 import type { TrendDirection, TrendSignal } from "@/types";
 
 const DIRECTIONS: { value: TrendDirection | "all"; label: string }[] = [
@@ -38,20 +42,30 @@ export default function FeedClient({
   const [sort, setSort] = useState("score");
   const [search, setSearch] = useState("");
   const [watching, setWatching] = useState<Set<string>>(new Set());
-  const [sessionId, setSessionId] = useState("");
+  const [owner, setOwner] = useState<WatchlistOwner | null>(null);
   const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
   const [watchError, setWatchError] = useState("");
 
   useEffect(() => {
-    const nextSessionId = getAnonymousSessionId();
-    setSessionId(nextSessionId);
+    async function loadWatchState() {
+      const sessionId = getAnonymousSessionId();
+      const user = await getCurrentUser();
+      let nextOwner: WatchlistOwner = { sessionId, plan: "free" };
 
-    getWatchedSignalIds(nextSessionId)
-      .then(setWatching)
-      .catch((error) => {
+      if (user) {
+        const profile = await getOrCreateProfile(user.id);
+        await migrateAnonymousWatchlistToUser(sessionId, user.id);
+        nextOwner = { sessionId, userId: user.id, plan: profile.plan };
+      }
+
+      setOwner(nextOwner);
+      setWatching(await getWatchedSignalIds(nextOwner));
+    }
+
+    loadWatchState().catch((error) => {
         console.warn("[watchlist] Unable to load watched signals:", error.message);
         setWatchError("Watchlist sync is unavailable. Check the Supabase watchlist table.");
-      });
+    });
   }, []);
 
   const categories = useMemo(() => {
@@ -87,7 +101,7 @@ export default function FeedClient({
     : 0;
 
   async function handleWatch(signal: TrendSignal) {
-    if (!sessionId || pendingSignalId) return;
+    if (!owner || pendingSignalId) return;
 
     const wasWatching = watching.has(signal.id);
     const next = new Set(watching);
@@ -99,8 +113,8 @@ export default function FeedClient({
     setWatchError("");
 
     try {
-      if (wasWatching) await removeWatchlistItem(sessionId, signal.id);
-      else await addWatchlistItem(sessionId, signal.id);
+      if (wasWatching) await removeWatchlistItem(owner, signal.id);
+      else await addWatchlistItem(owner, signal.id);
     } catch (error) {
       setWatching(watching);
       setWatchError(error instanceof Error ? error.message : "Unable to update watchlist.");
@@ -192,6 +206,18 @@ export default function FeedClient({
           style={{ color: "#fbbf24", border: "1px solid rgba(245,158,11,0.25)", background: "rgba(245,158,11,0.08)" }}
         >
           {watchError}
+        </div>
+      )}
+
+      {owner?.plan !== "pro" && watching.size >= FREE_WATCHLIST_LIMIT && (
+        <div
+          className="rounded-xl p-3 mb-4 text-xs flex flex-wrap gap-2 items-center"
+          style={{ color: "var(--text-secondary)", border: "1px solid rgba(99,102,241,0.25)", background: "rgba(99,102,241,0.06)" }}
+        >
+          <span className="font-semibold" style={{ color: "var(--accent-bright)" }}>
+            Free watchlist limit reached.
+          </span>
+          <span>Remove a signal or upgrade for unlimited tracking.</span>
         </div>
       )}
 
