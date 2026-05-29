@@ -88,3 +88,6 @@ export function getScoreLabel(score: number): string {
   if (score >= 45) return "Moderate Opportunity";
   return "Challenging Market";
 }
+
+// v3 trend platform types (feed, watchlist, briefing)
+export * from "./trends";

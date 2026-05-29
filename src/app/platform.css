@@ -1,0 +1,253 @@
+/* ============================================================
+   platform.css — Dark theme for v3 routes (/feed, /watchlist, /briefing)
+   Scoped under .platform-theme so old pages keep light globals.css styles.
+   ============================================================ */
+
+.platform-theme {
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --bg-base: #0b0e14;
+  --bg-surface: #111520;
+  --bg-card: #161b27;
+  --bg-hover: #1c2233;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-bright: rgba(255, 255, 255, 0.14);
+  --text-primary: #f0f2f7;
+  --text-secondary: #8b92a8;
+  --text-muted: #4a5068;
+  --accent: #6366f1;
+  --accent-bright: #818cf8;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --blue: #3b82f6;
+
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.platform-theme .card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.platform-theme .card-hover {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all 200ms;
+}
+
+.platform-theme .card-hover:hover {
+  border-color: var(--border-bright);
+  background: var(--bg-hover);
+}
+
+.platform-theme .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  transition: all 150ms;
+}
+
+.platform-theme .btn-primary:hover:not(:disabled) {
+  background: var(--accent-bright);
+  transform: translateY(-1px);
+}
+
+.platform-theme .btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.platform-theme .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  transition: all 150ms;
+}
+
+.platform-theme .btn-secondary:hover {
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+}
+
+.platform-theme .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: all 150ms;
+}
+
+.platform-theme .btn-ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.platform-theme .input-base {
+  width: 100%;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  outline: none;
+  transition: all 150ms;
+}
+
+.platform-theme .input-base::placeholder {
+  color: var(--text-muted);
+}
+
+.platform-theme .input-base:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.platform-theme .field-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.375rem;
+  color: var(--text-muted);
+}
+
+.platform-theme .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.platform-theme .badge-green {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.platform-theme .badge-red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.platform-theme .badge-amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.platform-theme .badge-blue {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.platform-theme .badge-purple {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+
+.platform-theme .badge-gray {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+}
+
+.platform-theme .mono {
+  font-family: var(--font-mono);
+}
+
+.platform-theme .live-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--green);
+  animation: platformLivePulse 2s ease-in-out infinite;
+}
+
+.platform-theme .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  width: 100%;
+  color: var(--text-muted);
+  transition: all 150ms;
+}
+
+.platform-theme .nav-link:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.platform-theme .nav-link.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-bright);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.platform-theme .animate-in {
+  animation: platformFadeUp 0.3s ease forwards;
+}
+
+.platform-theme .gradient-text {
+  background: linear-gradient(135deg, #818cf8, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.platform-theme .ai-prose {
+  line-height: 1.75;
+}
+
+.platform-theme .ai-prose p + p {
+  margin-top: 0.75rem;
+}
+
+@keyframes platformLivePulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes platformFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
