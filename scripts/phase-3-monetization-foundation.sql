@@ -22,14 +22,8 @@ create policy "Users read own profile"
   on public.profiles for select
   using (auth.uid() = user_id);
 
-create policy "Users insert own profile"
-  on public.profiles for insert
-  with check (auth.uid() = user_id);
-
-create policy "Users update own profile"
-  on public.profiles for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+-- Profile creation and plan updates happen server-side via service role.
+-- Do not add public insert/update policies for profiles.
 
 -- Future email/briefing alert settings. Not wired to delivery yet.
 create table if not exists public.alert_preferences (

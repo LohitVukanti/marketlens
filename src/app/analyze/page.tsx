@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import { AlertBox, Spinner } from "@/components/ui";
 import type { AnalysisFormInputs, GenerateReportResponse } from "@/types";
+import { supabase } from "@/lib/supabase";
+import { getAnonymousSessionId } from "@/lib/watchlist";
 
 const PRODUCT_TYPES = [
   "Physical product (retail / wholesale)",
@@ -115,9 +117,15 @@ export default function AnalyzePage() {
           }
         : { ...form, useMock: false };
 
+      const authSession = await supabase.auth.getSession();
+      const token = authSession.data.session?.access_token;
       const res = await fetch("/api/generate-report", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-MarketLens-Session-Id": getAnonymousSessionId(),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 

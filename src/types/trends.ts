@@ -5,6 +5,7 @@
 
 export type TrendDirection = "rising" | "falling" | "stable" | "breakout";
 export type TrendState = "emerging" | "rising" | "breakout" | "cooling" | "saturated";
+export type TrendSourceType = "discovered" | "from_analysis";
 export type TrendCategory =
   | "home-decor" | "apparel" | "beauty" | "food-beverage"
   | "digital-products" | "pets" | "fitness" | "jewelry"
@@ -45,6 +46,10 @@ export interface TrendSignal {
     opportunity_score?: number;
   };
   whyTrending?: string;
+  sourceType?: TrendSourceType;
+  reportId?: string | null;
+  createdByUserId?: string | null;
+  createdBySessionId?: string | null;
   trendState?: TrendState;
   signalSource?: "google_trends" | "fallback_seed" | "mock";
   direction: TrendDirection;

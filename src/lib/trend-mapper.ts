@@ -26,6 +26,10 @@ export type TrendSignalRow = {
   source_confidence?: number | null;
   score_explanation?: TrendSignal["scoreExplanation"] | null;
   why_trending?: string | null;
+  source_type?: TrendSignal["sourceType"] | null;
+  report_id?: string | null;
+  created_by_user_id?: string | null;
+  created_by_session_id?: string | null;
   trend_state: TrendState;
   summary: string;
   tags: string[] | null;
@@ -80,6 +84,10 @@ export function mapTrendSignalRow(row: TrendSignalRow): TrendSignal {
     sourceConfidence: row.source_confidence ?? undefined,
     scoreExplanation: row.score_explanation ?? undefined,
     whyTrending: row.why_trending ?? undefined,
+    sourceType: row.source_type ?? "discovered",
+    reportId: row.report_id ?? undefined,
+    createdByUserId: row.created_by_user_id ?? undefined,
+    createdBySessionId: row.created_by_session_id ?? undefined,
     trendState: row.trend_state,
     signalSource: row.signal_source,
     direction: directionForState(row.trend_state),

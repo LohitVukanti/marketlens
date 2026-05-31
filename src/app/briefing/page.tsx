@@ -5,8 +5,8 @@ import AppShell from "@/components/layout/AppShell";
 import { CATEGORY_ICONS, TREND_SIGNALS } from "@/lib/trend-data";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mapTrendSignalRow, type TrendSignalRow } from "@/lib/trend-mapper";
-import { getAnonymousSessionId, getWatchlistItems, migrateAnonymousWatchlistToUser, type WatchlistOwner } from "@/lib/watchlist";
-import { getCurrentUser, getOrCreateProfile } from "@/lib/auth";
+import { getWatchlistItems } from "@/lib/watchlist";
+import { getClientWatchlistOwner } from "@/lib/client-owner";
 import type { BriefingItem, TrendSignal } from "@/types";
 import Link from "next/link";
 
@@ -49,7 +49,7 @@ function BriefingItemCard({ item }: { item: BriefingItem }) {
 
 export default function BriefingPage() {
   const [signals, setSignals] = useState<TrendSignal[]>([]);
-  const [source, setSource] = useState<"watchlist" | "global" | "mock">("mock");
+  const [source, setSource] = useState<"personalized" | "global" | "mock">("mock");
   const [loading, setLoading] = useState(true);
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const briefing = useMemo(() => {
@@ -78,12 +78,12 @@ export default function BriefingPage() {
 
     return {
       headline:
-        source === "watchlist"
-          ? `Your watched niches: ${topNames}`
+        source === "personalized"
+          ? `Your MarketLens briefing: ${topNames}`
           : `Top global opportunities: ${topNames}`,
       summary:
-        source === "watchlist"
-          ? `${selectedSignals.length} watched signal${selectedSignals.length > 1 ? "s" : ""} are in today's briefing. ${breakouts.length} breakout, ${risers.length} rising fast, ${cooling.length} cooling.`
+        source === "personalized"
+          ? `Watched signals appear first, recently analyzed products second, and discovered opportunities third. ${breakouts.length} breakout, ${risers.length} rising fast, ${cooling.length} cooling.`
           : `No watchlist found for this session, so today's briefing uses the highest-scoring global trend signals. ${breakouts.length} breakout signal${breakouts.length === 1 ? "" : "s"} are active.`,
       items,
       opportunityOfDay,
@@ -93,38 +93,42 @@ export default function BriefingPage() {
   const oppColor = opp.score >= 80 ? "#10b981" : "#f59e0b";
 
   useEffect(() => {
-    const sessionId = getAnonymousSessionId();
-
     async function loadBriefingSignals() {
       try {
-        const user = await getCurrentUser();
-        let owner: WatchlistOwner = { sessionId, plan: "free" };
-
-        if (user) {
-          const profile = await getOrCreateProfile(user.id);
-          await migrateAnonymousWatchlistToUser(sessionId, user.id);
-          owner = { sessionId, userId: user.id, plan: profile.plan };
-        }
-
+        const owner = await getClientWatchlistOwner();
         const watchedItems = await getWatchlistItems(owner);
-        if (watchedItems.length > 0) {
-          setSignals(watchedItems.map((item) => item.signal));
-          setSource("watchlist");
-          return;
-        }
+        const watchedSignals = watchedItems.map((item) => item.signal);
 
         if (isSupabaseConfigured()) {
-          const { data, error } = await supabase
+          let analysisQuery = supabase
             .from("trend_signals")
             .select("*")
+            .eq("source_type", "from_analysis")
             .order("opportunity_score", { ascending: false })
             .limit(5);
+          analysisQuery = owner.userId
+            ? analysisQuery.eq("created_by_user_id", owner.userId)
+            : analysisQuery.eq("created_by_session_id", owner.sessionId);
+
+          const { data: analysisData } = await analysisQuery;
+
+          const { data: globalData, error } = await supabase
+            .from("trend_signals")
+            .select("*")
+            .neq("source_type", "from_analysis")
+            .order("opportunity_score", { ascending: false })
+            .limit(8);
 
           if (error) throw error;
-
-          if (data?.length) {
-            setSignals((data as TrendSignalRow[]).map(mapTrendSignalRow));
-            setSource("global");
+          const combined = [
+            ...watchedSignals,
+            ...((analysisData ?? []) as TrendSignalRow[]).map(mapTrendSignalRow),
+            ...((globalData ?? []) as TrendSignalRow[]).map(mapTrendSignalRow),
+          ];
+          const deduped = Array.from(new Map(combined.map((signal) => [signal.id, signal])).values()).slice(0, 8);
+          if (deduped.length) {
+            setSignals(deduped);
+            setSource(watchedSignals.length || analysisData?.length ? "personalized" : "global");
             return;
           }
         }
@@ -156,7 +160,7 @@ export default function BriefingPage() {
             AI-Generated · {today}
           </span>
           <span className="badge badge-gray text-[10px]">
-            {loading ? "Loading" : source === "watchlist" ? "Watchlist" : source === "global" ? "Global feed" : "Mock fallback"}
+            {loading ? "Loading" : source === "personalized" ? "Personalized" : source === "global" ? "Global feed" : "Mock fallback"}
           </span>
         </div>
         <h2 className="text-lg font-bold mb-2" style={{ color: "var(--text-primary)" }}>
@@ -224,10 +228,10 @@ export default function BriefingPage() {
               📧 Get this in your inbox
             </p>
             <p className="text-[11px] mb-3" style={{ color: "var(--text-muted)" }}>
-              Pro members receive a personalized briefing every morning before 7am based on their watchlist.
+              Email delivery is available after Resend setup and user email preferences are enabled.
             </p>
-            <button className="btn-primary w-full justify-center text-xs py-2">
-              Unlock Email Briefing
+            <button className="btn-primary w-full justify-center text-xs py-2 opacity-70 cursor-not-allowed" disabled>
+              Email setup required
             </button>
           </div>
 

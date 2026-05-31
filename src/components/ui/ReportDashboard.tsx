@@ -23,6 +23,7 @@ import {
   OpportunityRadar,
   OpportunityBarChart,
 } from "@/components/charts/OpportunityCharts";
+import { trackReportInFeed } from "@/lib/report-tracking";
 
 // ---- PDF export (lazy loaded to avoid SSR issues) -----------
 async function exportToPDF(report: SavedReport) {
@@ -107,6 +108,9 @@ export default function ReportDashboard({ report }: { report: SavedReport }) {
 
   const [copySuccess, setCopySuccess] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [tracking, setTracking] = useState(false);
+  const [trackMessage, setTrackMessage] = useState("");
+  const [trackedSignalId, setTrackedSignalId] = useState<string | null>(null);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -118,6 +122,21 @@ export default function ReportDashboard({ report }: { report: SavedReport }) {
       alert("Copy failed — please use the JSON download instead.");
     }
   }, [report]);
+
+  const handleTrack = useCallback(async () => {
+    setTracking(true);
+    setTrackMessage("");
+    try {
+      const result = await trackReportInFeed(report.id);
+      if (!result.success) throw new Error(result.error ?? "Could not track this product.");
+      setTrackedSignalId(result.signalId ?? null);
+      setTrackMessage("Tracking this product in your Trend Feed and watchlist.");
+    } catch (error) {
+      setTrackMessage(error instanceof Error ? error.message : "Could not track this product.");
+    } finally {
+      setTracking(false);
+    }
+  }, [report.id]);
 
   const handlePDF = useCallback(async () => {
     setExportingPDF(true);
@@ -164,6 +183,29 @@ export default function ReportDashboard({ report }: { report: SavedReport }) {
           </button>
           <Link href="/analyze" className="btn-primary text-xs px-4 py-2">
             + New Analysis
+          </Link>
+        </div>
+      </div>
+
+      <div className="card p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-slate-800">Turn this report into a tracked signal</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Add this product to Trend Feed, Watchlist, and Daily Briefing tracking.
+          </p>
+          {trackMessage && (
+            <p className="text-xs mt-2 text-brand-700">{trackMessage}</p>
+          )}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={handleTrack} disabled={tracking} className="btn-primary text-xs px-4 py-2">
+            {tracking ? "Tracking..." : "Track this product in Trend Feed"}
+          </button>
+          <Link
+            href={trackedSignalId ? `/feed?signal=${trackedSignalId}` : `/feed?q=${encodeURIComponent(report.niche)}`}
+            className="btn-secondary text-xs px-4 py-2"
+          >
+            View in Trend Feed
           </Link>
         </div>
       </div>

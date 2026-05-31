@@ -13,20 +13,27 @@ import { Badge, EmptyState, Spinner, AlertBox } from "@/components/ui";
 import { formatDate, truncate, downloadReportJSON, getScoreColors } from "@/lib/utils";
 import { getScoreBand, getScoreLabel } from "@/types";
 import type { SavedReport } from "@/types";
+import { loadReportTrackingStatuses, trackReportInFeed } from "@/lib/report-tracking";
 
 // ---- Report Card Component ----------------------------------
 function ReportCard({
   report,
   onOpen,
   onDelete,
+  trackingStatus,
+  onTracked,
 }: {
   report: SavedReport;
   onOpen: (r: SavedReport) => void;
   onDelete: (id: string) => void;
+  trackingStatus?: { tracked: boolean; signalId: string };
+  onTracked: (reportId: string, signalId: string) => void;
 }) {
   const band = getScoreBand(report.report_data.marketScore);
   const colors = getScoreColors(band);
   const [deleting, setDeleting] = useState(false);
+  const [tracking, setTracking] = useState(false);
+  const [trackError, setTrackError] = useState("");
 
   async function handleDelete() {
     if (!confirm(`Delete report for "${report.niche}"? This cannot be undone.`)) return;
@@ -44,6 +51,22 @@ function ReportCard({
     }
   }
 
+  async function handleTrack() {
+    setTracking(true);
+    setTrackError("");
+    try {
+      const result = await trackReportInFeed(report.id);
+      if (!result.success || !result.signalId) {
+        throw new Error(result.error ?? "Could not track report.");
+      }
+      onTracked(report.id, result.signalId);
+    } catch (error) {
+      setTrackError(error instanceof Error ? error.message : "Could not track report.");
+    } finally {
+      setTracking(false);
+    }
+  }
+
   return (
     <div className="card p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:shadow-card-hover transition-shadow animate-in-card">
       {/* Icon */}
@@ -58,6 +81,7 @@ function ReportCard({
             {report.niche}
           </h3>
           {report.is_mock && <Badge variant="amber">Sample</Badge>}
+          {trackingStatus?.tracked ? <Badge variant="green">Tracked</Badge> : <Badge variant="blue">Not tracked</Badge>}
         </div>
         <p className="text-xs text-slate-400 mb-2">
           {report.location} · {report.target_customer}
@@ -67,6 +91,9 @@ function ReportCard({
           <p className="text-xs text-slate-500 mt-2 hidden sm:block">
             {truncate(report.report_data.summary, 140)}
           </p>
+        )}
+        {trackError && (
+          <p className="text-xs text-amber-600 mt-2">{trackError}</p>
         )}
       </div>
 
@@ -96,6 +123,24 @@ function ReportCard({
           ⬇ JSON
         </button>
         <button
+          onClick={handleTrack}
+          disabled={tracking}
+          className="btn-secondary text-xs px-3 py-2"
+        >
+          {tracking ? "Tracking..." : trackingStatus?.tracked ? "Track Again" : "Track in Feed"}
+        </button>
+        <button
+          onClick={() => {
+            const href = trackingStatus?.signalId
+              ? `/feed?signal=${trackingStatus.signalId}`
+              : `/feed?q=${encodeURIComponent(report.niche)}`;
+            routerPush(href);
+          }}
+          className="btn-ghost text-xs border border-slate-200 px-3 py-2"
+        >
+          Open Trend Signal
+        </button>
+        <button
           onClick={handleDelete}
           disabled={deleting}
           className="btn-ghost text-xs border border-red-100 text-red-500 hover:bg-red-50 px-3 py-2 disabled:opacity-50"
@@ -107,12 +152,17 @@ function ReportCard({
   );
 }
 
+function routerPush(href: string) {
+  window.location.href = href;
+}
+
 // ============================================================
 //  MAIN PAGE
 // ============================================================
 export default function SavedReportsPage() {
   const router = useRouter();
   const [reports, setReports] = useState<SavedReport[]>([]);
+  const [trackingStatuses, setTrackingStatuses] = useState<Record<string, { tracked: boolean; signalId: string }>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,7 +173,9 @@ export default function SavedReportsPage() {
       const res = await fetch("/api/reports");
       const data = await res.json();
       if (!data.success) throw new Error(data.error ?? "Failed to load reports.");
-      setReports(data.reports ?? []);
+      const nextReports = data.reports ?? [];
+      setReports(nextReports);
+      setTrackingStatuses(await loadReportTrackingStatuses(nextReports.map((report: SavedReport) => report.id)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load reports.");
     } finally {
@@ -140,6 +192,13 @@ export default function SavedReportsPage() {
 
   function handleDelete(id: string) {
     setReports((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  function handleTracked(reportId: string, signalId: string) {
+    setTrackingStatuses((prev) => ({
+      ...prev,
+      [reportId]: { tracked: true, signalId },
+    }));
   }
 
   return (
@@ -199,6 +258,8 @@ export default function SavedReportsPage() {
                 report={report}
                 onOpen={handleOpen}
                 onDelete={handleDelete}
+                trackingStatus={trackingStatuses[report.id]}
+                onTracked={handleTracked}
               />
             ))}
           </div>

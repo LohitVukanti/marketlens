@@ -31,20 +31,53 @@ export async function getFeedSignals(): Promise<FeedSignalResult> {
     }
   );
 
-  const { data, error } = await supabase
+  const { data: analysisData, error: analysisError } = await supabase
     .from("trend_signals")
     .select("*")
+    .eq("source_type", "from_analysis")
+    .order("updated_at", { ascending: false })
+    .limit(100);
+
+  const { data: discoveredData, error: discoveredError } = await supabase
+    .from("trend_signals")
+    .select("*")
+    .neq("source_type", "from_analysis")
     .order("opportunity_score", { ascending: false })
-    .limit(50);
+    .limit(150);
 
-  if (error) {
-    console.warn("[signals] Falling back to mock trend feed:", error.message);
+  if (analysisError || discoveredError) {
+    console.warn(
+      "[signals] Falling back to legacy trend feed query:",
+      analysisError?.message || discoveredError?.message
+    );
+
+    const { data, error } = await supabase
+      .from("trend_signals")
+      .select("*")
+      .order("opportunity_score", { ascending: false })
+      .limit(250);
+
+    if (error) {
+      console.warn("[signals] Falling back to mock trend feed:", error.message);
+      return { signals: TREND_SIGNALS, source: "mock" };
+    }
+
+    if (!data?.length) {
+      return { signals: TREND_SIGNALS, source: "mock" };
+    }
+
+    return { signals: (data as TrendSignalRow[]).map(mapTrendSignalRow), source: "supabase" };
+  }
+
+  const rowsById = new Map<string, TrendSignalRow>();
+  [...(analysisData ?? []), ...(discoveredData ?? [])].forEach((row) => {
+    rowsById.set((row as TrendSignalRow).id, row as TrendSignalRow);
+  });
+  const rows = Array.from(rowsById.values());
+
+  if (!rows.length) {
     return { signals: TREND_SIGNALS, source: "mock" };
   }
 
-  if (!data?.length) {
-    return { signals: TREND_SIGNALS, source: "mock" };
-  }
-
-  return { signals: (data as TrendSignalRow[]).map(mapTrendSignalRow), source: "supabase" };
+  return { signals: rows.map(mapTrendSignalRow), source: "supabase" };
 }

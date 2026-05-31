@@ -29,14 +29,26 @@ export async function getOrCreateProfile(userId: string): Promise<MarketLensProf
   if (error) throw error;
   if (data) return data as MarketLensProfile;
 
-  const { data: inserted, error: insertError } = await supabase
-    .from("profiles")
-    .insert({ user_id: userId, plan: "free" })
-    .select("user_id, plan, created_at, daily_briefing_enabled, email_alerts_enabled")
-    .single();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
 
-  if (insertError) throw insertError;
-  return inserted as MarketLensProfile;
+  if (!token) {
+    throw new Error("Login required to create a profile.");
+  }
+
+  const response = await fetch("/api/profile/ensure", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const payload = await response.json();
+
+  if (!response.ok || !payload.profile) {
+    throw new Error(payload.error || "Could not create profile.");
+  }
+
+  return payload.profile as MarketLensProfile;
 }
 
 export async function getCurrentProfile() {

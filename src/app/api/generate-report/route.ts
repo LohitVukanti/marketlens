@@ -11,6 +11,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerSupabase } from "@/lib/supabase";
 import { buildAnalysisPrompt, parseAIResponse } from "@/lib/ai-prompt";
 import { MOCK_REPORT_DATA } from "@/lib/mock-data";
+import { getUserFromAuthorization } from "@/lib/server-auth";
+import { createOrUpdateTrendSignalFromReport } from "@/lib/tracked-signal";
 import type {
   GenerateReportRequest,
   GenerateReportResponse,
@@ -133,6 +135,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRepor
   }
 
   const supabase = createServerSupabase();
+  const user = await getUserFromAuthorization(req.headers.get("authorization"));
+  const sessionId = req.headers.get("x-marketlens-session-id");
   const { data, error } = await supabase
     .from("reports")
     .insert({
@@ -156,6 +160,18 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRepor
         error: `Report could not be saved: ${error.message}`,
       },
       { status: 500 }
+    );
+  }
+
+  try {
+    await createOrUpdateTrendSignalFromReport(data as SavedReport, {
+      userId: user?.id,
+      sessionId,
+    });
+  } catch (signalError) {
+    console.warn(
+      "[generate-report] Report saved, but trend signal creation failed:",
+      signalError instanceof Error ? signalError.message : signalError
     );
   }
 

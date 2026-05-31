@@ -102,6 +102,10 @@ create table if not exists public.trend_signals (
   source_confidence     integer not null default 0 check (source_confidence between 0 and 100),
   score_explanation     jsonb not null default '{}'::jsonb,
   why_trending          text,
+  source_type           text not null default 'discovered' check (source_type in ('discovered', 'from_analysis')),
+  report_id             uuid references public.reports(id) on delete set null,
+  created_by_user_id    uuid references auth.users(id) on delete set null,
+  created_by_session_id text,
   trend_state           public.trend_state not null,
   summary               text not null,
   tags                  text[] not null default '{}',
@@ -128,6 +132,18 @@ create index if not exists trend_signals_etsy_competition_idx
 
 create index if not exists trend_signals_source_count_idx
   on public.trend_signals (source_count desc);
+
+create index if not exists trend_signals_source_type_idx
+  on public.trend_signals (source_type);
+
+create index if not exists trend_signals_report_id_idx
+  on public.trend_signals (report_id);
+
+create index if not exists trend_signals_created_by_user_idx
+  on public.trend_signals (created_by_user_id, updated_at desc);
+
+create index if not exists trend_signals_created_by_session_idx
+  on public.trend_signals (created_by_session_id, updated_at desc);
 
 alter table public.trend_signals enable row level security;
 
@@ -227,14 +243,8 @@ create policy "Users read own profile"
   on public.profiles for select
   using (auth.uid() = user_id);
 
-create policy "Users insert own profile"
-  on public.profiles for insert
-  with check (auth.uid() = user_id);
-
-create policy "Users update own profile"
-  on public.profiles for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+-- Profile creation and plan updates happen server-side via service role.
+-- Do not add public insert/update policies for profiles.
 
 create table if not exists public.alert_preferences (
   user_id uuid primary key references auth.users(id) on delete cascade,

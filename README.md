@@ -441,6 +441,58 @@ Manual monetization test:
 9. Set `plan = 'pro'`, `email_alerts_enabled = true`, and a low watchlist threshold, then call `/api/jobs/alert-emails`.
 10. Confirm guest users can still browse `/feed` and keep anonymous watchlists.
 
+### Connected Product Flow
+
+Deep Analysis reports now become trackable trend signals:
+
+- `/api/generate-report` still saves the report in `reports`.
+- After a report is saved, the server creates or updates a matching `trend_signals` row.
+- The generated trend signal is marked `source_type = 'from_analysis'`.
+- The row stores `report_id`, plus `created_by_user_id` or `created_by_session_id` when available.
+- If external trend enrichment is unavailable during report creation, the server creates a safe fallback trend signal from the report score and demand narrative.
+- The scheduled signal collector can continue enriching system-discovered signals without disrupting analysis-created signals.
+
+Run this migration before using the connected flow:
+
+```bash
+scripts/connect-reports-to-trend-signals.sql
+```
+
+New trend signal columns:
+
+- `source_type`: `discovered` or `from_analysis`
+- `report_id`: nullable link back to `reports`
+- `created_by_user_id`: nullable authenticated owner
+- `created_by_session_id`: nullable anonymous session owner
+
+User-facing behavior:
+
+- Deep Analysis dashboard includes `Track this product in Trend Feed`.
+- Tracking creates/updates the trend signal and adds it to the current watchlist.
+- Saved Reports show `Tracked` / `Not tracked`.
+- Saved Reports include `Track in Feed` and `Open Trend Signal`.
+- Trend Feed shows `Discovered` or `From Analysis` badges.
+- Trend Feed can filter by `All`, `Discovered`, and `My Analyses`.
+- Daily Briefing uses watched signals first, recently analyzed/tracked products second, and top discovered signals third.
+
+Manual connected-flow test:
+
+1. Run `scripts/connect-reports-to-trend-signals.sql`.
+2. Run a Deep Analysis.
+3. Confirm a `trend_signals` row exists with `source_type = 'from_analysis'` and `report_id` set.
+4. On the report dashboard, click `Track this product in Trend Feed`.
+5. Confirm it appears in `/watchlist`.
+6. Open `/feed?signal=<signal_id>` or use the `My Analyses` filter.
+7. Open `/saved-reports` and confirm the report shows `Tracked`.
+8. Open `/briefing` and confirm watched/analyzed signals appear before discovered signals.
+
+Email reality:
+
+- In-app Daily Briefing works without Resend.
+- Email jobs exist but only send when `RESEND_API_KEY` and `RESEND_FROM_EMAIL` are configured.
+- Users must also have email preferences enabled in Supabase.
+- The in-app UI says email delivery is available after Resend setup; it does not claim emails are active by default.
+
 ### Run or seed signals
 
 ```bash

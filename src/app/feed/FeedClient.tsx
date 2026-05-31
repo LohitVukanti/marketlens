@@ -1,20 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import TrendCard from "@/components/ui/TrendCard";
 import { CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/trend-data";
 import {
   addWatchlistItem,
   FREE_WATCHLIST_LIMIT,
-  getAnonymousSessionId,
   getWatchedSignalIds,
-  migrateAnonymousWatchlistToUser,
   removeWatchlistItem,
   type WatchlistOwner,
 } from "@/lib/watchlist";
-import { getCurrentUser, getOrCreateProfile } from "@/lib/auth";
 import type { TrendDirection, TrendSignal } from "@/types";
+import { getClientWatchlistOwner } from "@/lib/client-owner";
 
 const DIRECTIONS: { value: TrendDirection | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -30,6 +29,12 @@ const SORTS = [
   { value: "new", label: "Newest" },
 ];
 
+const ORIGINS = [
+  { value: "all", label: "All" },
+  { value: "discovered", label: "Discovered" },
+  { value: "my-analyses", label: "My Analyses" },
+];
+
 export default function FeedClient({
   signals,
   dataSource,
@@ -37,8 +42,10 @@ export default function FeedClient({
   signals: TrendSignal[];
   dataSource: "supabase" | "mock";
 }) {
+  const searchParams = useSearchParams();
   const [dirFilter, setDirFilter] = useState<string>("all");
   const [catFilter, setCatFilter] = useState<string>("all");
+  const [originFilter, setOriginFilter] = useState("all");
   const [sort, setSort] = useState("score");
   const [search, setSearch] = useState("");
   const [watching, setWatching] = useState<Set<string>>(new Set());
@@ -48,16 +55,7 @@ export default function FeedClient({
 
   useEffect(() => {
     async function loadWatchState() {
-      const sessionId = getAnonymousSessionId();
-      const user = await getCurrentUser();
-      let nextOwner: WatchlistOwner = { sessionId, plan: "free" };
-
-      if (user) {
-        const profile = await getOrCreateProfile(user.id);
-        await migrateAnonymousWatchlistToUser(sessionId, user.id);
-        nextOwner = { sessionId, userId: user.id, plan: profile.plan };
-      }
-
+      const nextOwner = await getClientWatchlistOwner();
       setOwner(nextOwner);
       setWatching(await getWatchedSignalIds(nextOwner));
     }
@@ -68,12 +66,36 @@ export default function FeedClient({
     });
   }, []);
 
+  useEffect(() => {
+    const q = searchParams.get("q");
+    const signalId = searchParams.get("signal");
+    if (q) setSearch(q);
+    if (signalId) {
+      const signal = signals.find((item) => item.id === signalId);
+      if (signal) setSearch(signal.name);
+    }
+  }, [searchParams, signals]);
+
   const categories = useMemo(() => {
     return Array.from(new Set(signals.map((signal) => signal.category)));
   }, [signals]);
 
   const filtered = useMemo(() => {
     let next = [...signals];
+    if (originFilter === "discovered") {
+      next = next.filter((trend) => trend.sourceType !== "from_analysis");
+    }
+    if (originFilter === "my-analyses") {
+      next = next.filter(
+        (trend) =>
+          trend.sourceType === "from_analysis" &&
+          Boolean(
+            owner &&
+              ((owner.userId && trend.createdByUserId === owner.userId) ||
+                (owner.sessionId && trend.createdBySessionId === owner.sessionId))
+          )
+      );
+    }
     if (dirFilter !== "all") next = next.filter((trend) => trend.direction === dirFilter);
     if (catFilter !== "all") next = next.filter((trend) => trend.category === catFilter);
     if (search.trim()) {
@@ -93,7 +115,7 @@ export default function FeedClient({
       );
     }
     return next;
-  }, [dirFilter, catFilter, sort, search, signals]);
+  }, [dirFilter, catFilter, originFilter, owner, sort, search, signals]);
 
   const breakouts = signals.filter((signal) => signal.direction === "breakout").length;
   const avgScore = signals.length
@@ -179,6 +201,18 @@ export default function FeedClient({
           {categories.map((category) => (
             <option key={category} value={category}>
               {CATEGORY_ICONS[category]} {CATEGORY_LABELS[category]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="input-base text-xs py-2 w-auto"
+          value={originFilter}
+          onChange={(event) => setOriginFilter(event.target.value)}
+        >
+          {ORIGINS.map((origin) => (
+            <option key={origin.value} value={origin.value}>
+              {origin.label}
             </option>
           ))}
         </select>

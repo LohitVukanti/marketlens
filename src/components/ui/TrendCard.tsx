@@ -81,6 +81,9 @@ export default function TrendCard({ signal, onWatch, isWatched = false, isUpdati
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <h3 className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{signal.name}</h3>
             <span className={`badge ${dir.cls} text-[10px]`}>{dir.label}</span>
+            <span className={`badge ${signal.sourceType === "from_analysis" ? "badge-purple" : "badge-gray"} text-[10px]`}>
+              {signal.sourceType === "from_analysis" ? "From Analysis" : "Discovered"}
+            </span>
           </div>
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
             {CATEGORY_LABELS[signal.category]} · {signal.niche}
