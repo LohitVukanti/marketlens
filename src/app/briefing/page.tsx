@@ -1,6 +1,7 @@
 // src/app/briefing/page.tsx — Daily AI Briefing (habit loop engine)
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { CATEGORY_ICONS, TREND_SIGNALS } from "@/lib/trend-data";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -9,6 +10,11 @@ import { getWatchlistItems } from "@/lib/watchlist";
 import { getClientWatchlistOwner } from "@/lib/client-owner";
 import type { BriefingItem, TrendSignal } from "@/types";
 import Link from "next/link";
+
+type EmailPreferences = {
+  daily_briefing_enabled: boolean;
+  email_alerts_enabled: boolean;
+};
 
 function BriefingItemCard({ item }: { item: BriefingItem }) {
   const config = {
@@ -48,9 +54,16 @@ function BriefingItemCard({ item }: { item: BriefingItem }) {
 }
 
 export default function BriefingPage() {
+  const router = useRouter();
   const [signals, setSignals] = useState<TrendSignal[]>([]);
   const [source, setSource] = useState<"personalized" | "global" | "mock">("mock");
   const [loading, setLoading] = useState(true);
+  const [emailPrefs, setEmailPrefs] = useState<EmailPreferences | null>(null);
+  const [emailAuthed, setEmailAuthed] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(true);
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [resendConfigured, setResendConfigured] = useState(false);
+  const [emailMessage, setEmailMessage] = useState("");
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const briefing = useMemo(() => {
     const selectedSignals = signals.length ? signals : TREND_SIGNALS.slice(0, 5);
@@ -147,6 +160,75 @@ export default function BriefingPage() {
     loadBriefingSignals();
   }, []);
 
+  useEffect(() => {
+    async function loadEmailPreferences() {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) {
+          setEmailAuthed(false);
+          return;
+        }
+
+        setEmailAuthed(true);
+        const response = await fetch("/api/profile/preferences", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Could not load email preferences.");
+
+        setEmailPrefs({
+          daily_briefing_enabled: Boolean(payload.profile.daily_briefing_enabled),
+          email_alerts_enabled: Boolean(payload.profile.email_alerts_enabled),
+        });
+        setResendConfigured(Boolean(payload.resendConfigured));
+      } catch (error) {
+        setEmailMessage(error instanceof Error ? error.message : "Could not load email preferences.");
+      } finally {
+        setEmailLoading(false);
+      }
+    }
+
+    loadEmailPreferences();
+  }, []);
+
+  async function updateEmailPreference(updates: Partial<EmailPreferences>) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setEmailSaving(true);
+    setEmailMessage("");
+
+    try {
+      const response = await fetch("/api/profile/preferences", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not update email preferences.");
+
+      setEmailPrefs({
+        daily_briefing_enabled: Boolean(payload.profile.daily_briefing_enabled),
+        email_alerts_enabled: Boolean(payload.profile.email_alerts_enabled),
+      });
+      setResendConfigured(Boolean(payload.resendConfigured));
+      setEmailMessage("Email preferences updated.");
+    } catch (error) {
+      setEmailMessage(error instanceof Error ? error.message : "Could not update email preferences.");
+    } finally {
+      setEmailSaving(false);
+    }
+  }
+
   return (
     <AppShell title="Daily Briefing" subtitle={today}>
       {/* Header card */}
@@ -222,30 +304,74 @@ export default function BriefingPage() {
             </div>
           </div>
 
-          {/* Email upgrade */}
+          {/* Email preferences */}
           <div className="rounded-xl p-4 border" style={{ borderColor: "rgba(99,102,241,0.2)", background: "rgba(99,102,241,0.05)" }}>
             <p className="text-xs font-semibold mb-1" style={{ color: "var(--accent-bright)" }}>
-              📧 Get this in your inbox
+              Get this in your inbox
             </p>
             <p className="text-[11px] mb-3" style={{ color: "var(--text-muted)" }}>
-              Email delivery is available after Resend setup and user email preferences are enabled.
+              {emailAuthed
+                ? resendConfigured
+                  ? "Choose which MarketLens emails you want to receive."
+                  : "Resend is not configured yet. Preferences can be saved, but email delivery is unavailable."
+                : "Log in to save email briefing preferences."}
             </p>
-            <button className="btn-primary w-full justify-center text-xs py-2 opacity-70 cursor-not-allowed" disabled>
-              Email setup required
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() =>
+                  emailAuthed
+                    ? updateEmailPreference({
+                        daily_briefing_enabled: !emailPrefs?.daily_briefing_enabled,
+                      })
+                    : router.push("/login")
+                }
+                disabled={emailSaving || emailLoading}
+                className="btn-primary w-full justify-center text-xs py-2"
+              >
+                {!emailAuthed
+                  ? "Log in to enable"
+                  : emailPrefs?.daily_briefing_enabled
+                    ? "Email briefing enabled"
+                    : "Email briefing disabled"}
+              </button>
+              {emailAuthed && (
+                <button
+                  onClick={() =>
+                    updateEmailPreference({
+                      email_alerts_enabled: !emailPrefs?.email_alerts_enabled,
+                    })
+                  }
+                  disabled={emailSaving || emailLoading}
+                  className="btn-secondary w-full justify-center text-xs py-2"
+                >
+                  {emailPrefs?.email_alerts_enabled ? "Alert emails enabled" : "Alert emails disabled"}
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] mt-3" style={{ color: resendConfigured ? "#34d399" : "#f59e0b" }}>
+              {resendConfigured ? "Email delivery configured" : "Resend not configured / email delivery unavailable"}
+            </p>
+            {emailMessage && (
+              <p className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>
+                {emailMessage}
+              </p>
+            )}
           </div>
 
           {/* Archive notice */}
           <div className="rounded-xl p-4" style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}>
             <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-              📅 Briefing Archive
+              Briefing Archive
             </p>
             <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-              30 days of past briefings available on Pro. Compare how niches moved week over week.
+              Briefing archive is planned for Pro. MarketLens does not store historical briefing snapshots yet.
             </p>
-            <button className="w-full mt-3 text-xs py-2 rounded-lg font-medium"
-              style={{ color: "var(--text-muted)", border: "1px dashed var(--border)" }}>
-              View Archive (Pro)
+            <button
+              className="w-full mt-3 text-xs py-2 rounded-lg font-medium opacity-70 cursor-not-allowed"
+              disabled
+              style={{ color: "var(--text-muted)", border: "1px dashed var(--border)" }}
+            >
+              Coming soon
             </button>
           </div>
         </div>
