@@ -278,7 +278,7 @@ export default function LandingPage() {
         <footer className="border-t border-slate-100 py-8 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
             <p>© {new Date().getFullYear()} MarketLens · AI-Powered Market Intelligence</p>
-            <p>Built with Next.js · Tailwind · Anthropic Claude · Supabase</p>
+            <p>Built with Next.js · Tailwind · OpenAI · Supabase</p>
           </div>
         </footer>
       </main>

@@ -1,7 +1,7 @@
 // ============================================================
 // src/lib/ai-prompt.ts
 // Builds the AI prompt and validates/parses the response JSON.
-// Supports both Anthropic and OpenAI providers.
+// Used by the OpenAI report generation route.
 // ============================================================
 
 import type { AnalysisFormInputs, ReportData, OpportunityFactor } from "@/types";

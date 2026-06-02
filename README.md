@@ -2,7 +2,7 @@
 
 A full-stack MVP that generates AI-powered market intelligence reports for small businesses, Etsy sellers, restaurant owners, and local entrepreneurs.
 
-Built with **Next.js 14 · TypeScript · Tailwind CSS · Anthropic Claude · Supabase · Recharts**.
+Built with **Next.js 14 · TypeScript · Tailwind CSS · OpenAI · Supabase · Recharts**.
 
 ---
 
@@ -105,7 +105,8 @@ Edit `.env.local`:
 
 ```env
 # Required for AI generation
-ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
 
 # Required for saving reports
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -566,8 +567,9 @@ https://marketlens-blvjl37ul-lohitvukanti1.vercel.app/
 
 | Variable | Required | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Yes (for AI) | Anthropic Claude API key |
-| `AI_PROVIDER` | No | `anthropic` (default) |
+| `OPENAI_API_KEY` | Yes (for AI) | OpenAI API key for Deep Analysis |
+| `OPENAI_MODEL` | No | OpenAI model for report generation, defaults to `gpt-4o-mini` |
+| `ANTHROPIC_API_KEY` | No | Legacy/unused after OpenAI migration |
 | `NEXT_PUBLIC_MOCK_MODE` | No | `true` to skip AI calls |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes (for DB) | Your Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes (for DB) | Supabase anon key |
@@ -599,7 +601,7 @@ This approach mirrors index construction methods from applied econometrics (weig
 | Frontend | Next.js 14 (App Router), TypeScript |
 | Styling | Tailwind CSS, DM Sans + DM Serif Display |
 | Charts | Recharts |
-| AI | Anthropic Claude (claude-sonnet-4) via secure API route |
+| AI | OpenAI (`gpt-4o-mini` default) via secure API route |
 | Database | Supabase (PostgreSQL + JSONB) |
 | PDF Export | jsPDF |
 | Deployment | Vercel |

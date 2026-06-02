@@ -7,7 +7,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { createServerSupabase } from "@/lib/supabase";
 import { buildAnalysisPrompt, parseAIResponse } from "@/lib/ai-prompt";
 import { MOCK_REPORT_DATA } from "@/lib/mock-data";
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRepor
   const isMockMode =
     useMock === true ||
     process.env.NEXT_PUBLIC_MOCK_MODE === "true" ||
-    !process.env.ANTHROPIC_API_KEY;
+    !process.env.OPENAI_API_KEY;
 
   let reportData = MOCK_REPORT_DATA;
 
@@ -85,27 +85,28 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRepor
         niche, location, customer, productType, priceRange: priceRange ?? "", competitors: competitors ?? "",
       });
 
-      const provider = process.env.AI_PROVIDER ?? "anthropic";
+      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const completion = await client.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        temperature: 0.3,
+        max_tokens: 4096,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a senior market intelligence analyst. Return only valid JSON matching the user's requested schema.",
+          },
+          { role: "user", content: prompt },
+        ],
+      });
 
-      if (provider === "anthropic") {
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const message = await client.messages.create({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4096,
-          messages: [{ role: "user", content: prompt }],
-        });
-
-        const textBlock = message.content.find((b) => b.type === "text");
-        if (!textBlock || textBlock.type !== "text") {
-          throw new Error("AI returned no text content.");
-        }
-        reportData = parseAIResponse(textBlock.text);
-      } else {
-        // OpenAI fallback (requires OPENAI_API_KEY and 'openai' package)
-        throw new Error(
-          "OpenAI provider is not yet wired. Set AI_PROVIDER=anthropic and provide ANTHROPIC_API_KEY."
-        );
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("OpenAI returned no report content.");
       }
+
+      reportData = parseAIResponse(content);
     } catch (err) {
       console.error("[generate-report] AI call failed:", err);
       return NextResponse.json(
