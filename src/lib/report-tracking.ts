@@ -1,7 +1,6 @@
 "use client";
 
-import { supabase } from "@/lib/supabase";
-import { getAnonymousSessionId } from "@/lib/watchlist";
+import { reportRequestHeaders } from "@/lib/report-api-client";
 
 export type TrackReportResult = {
   success: boolean;
@@ -11,14 +10,9 @@ export type TrackReportResult = {
 };
 
 export async function trackReportInFeed(reportId: string): Promise<TrackReportResult> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
   const response = await fetch(`/api/reports/${reportId}/track`, {
     method: "POST",
-    headers: {
-      "X-MarketLens-Session-Id": getAnonymousSessionId(),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: await reportRequestHeaders(),
   });
   const payload = await response.json();
 
@@ -34,15 +28,9 @@ export async function trackReportInFeed(reportId: string): Promise<TrackReportRe
 }
 
 export async function loadReportTrackingStatuses(reportIds: string[]) {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
   const response = await fetch("/api/reports/tracking-status", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-MarketLens-Session-Id": getAnonymousSessionId(),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: await reportRequestHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ reportIds }),
   });
   const payload = await response.json();

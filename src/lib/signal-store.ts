@@ -31,13 +31,6 @@ export async function getFeedSignals(): Promise<FeedSignalResult> {
     }
   );
 
-  const { data: analysisData, error: analysisError } = await supabase
-    .from("trend_signals")
-    .select("*")
-    .eq("source_type", "from_analysis")
-    .order("updated_at", { ascending: false })
-    .limit(100);
-
   const { data: discoveredData, error: discoveredError } = await supabase
     .from("trend_signals")
     .select("*")
@@ -45,10 +38,10 @@ export async function getFeedSignals(): Promise<FeedSignalResult> {
     .order("opportunity_score", { ascending: false })
     .limit(150);
 
-  if (analysisError || discoveredError) {
+  if (discoveredError) {
     console.warn(
       "[signals] Falling back to legacy trend feed query:",
-      analysisError?.message || discoveredError?.message
+      discoveredError.message
     );
 
     const { data, error } = await supabase
@@ -70,7 +63,7 @@ export async function getFeedSignals(): Promise<FeedSignalResult> {
   }
 
   const rowsById = new Map<string, TrendSignalRow>();
-  [...(analysisData ?? []), ...(discoveredData ?? [])].forEach((row) => {
+  [...(discoveredData ?? [])].forEach((row) => {
     rowsById.set((row as TrendSignalRow).id, row as TrendSignalRow);
   });
   const rows = Array.from(rowsById.values());

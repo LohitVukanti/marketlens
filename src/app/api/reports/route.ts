@@ -1,13 +1,14 @@
 // ============================================================
 // src/app/api/reports/route.ts
-// GET all saved reports from Supabase.
+// GET owner-scoped saved reports from Supabase.
 // ============================================================
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 import { MOCK_SAVED_REPORT } from "@/lib/mock-data";
+import { applyReportOwnerFilter, getReportOwner } from "@/lib/report-access";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
   // Return mock data if Supabase isn't configured
@@ -15,12 +16,18 @@ export async function GET() {
     return NextResponse.json({ success: true, reports: [MOCK_SAVED_REPORT] });
   }
 
+  const owner = await getReportOwner(req);
+  if (!owner.userId && !owner.sessionId) {
+    return NextResponse.json({ success: true, reports: [] });
+  }
+
   const supabase = createServerSupabase();
-  const { data, error } = await supabase
+  const query = supabase
     .from("reports")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(50);
+  const { data, error } = await applyReportOwnerFilter(query, owner);
 
   if (error) {
     return NextResponse.json(

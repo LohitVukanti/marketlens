@@ -138,9 +138,22 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRepor
   const supabase = createServerSupabase();
   const user = await getUserFromAuthorization(req.headers.get("authorization"));
   const sessionId = req.headers.get("x-marketlens-session-id");
+
+  if (!user && !sessionId) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Report could not be saved: missing anonymous session id.",
+      },
+      { status: 400 }
+    );
+  }
+
   const { data, error } = await supabase
     .from("reports")
     .insert({
+      user_id: user?.id ?? null,
+      session_id: user ? null : sessionId,
       niche,
       location,
       target_customer: customer,

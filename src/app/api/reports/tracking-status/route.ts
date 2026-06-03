@@ -19,9 +19,11 @@ export async function POST(req: NextRequest) {
     .in("report_id", reportIds);
 
   if (user) {
-    query = query.or(`created_by_user_id.eq.${user.id},created_by_user_id.is.null`);
+    query = query.eq("created_by_user_id", user.id);
   } else if (sessionId) {
-    query = query.or(`created_by_session_id.eq.${sessionId},created_by_session_id.is.null`);
+    query = query.eq("created_by_session_id", sessionId);
+  } else {
+    return NextResponse.json({ success: true, statuses: {} });
   }
 
   const { data, error } = await query;

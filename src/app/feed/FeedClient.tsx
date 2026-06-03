@@ -14,6 +14,7 @@ import {
 } from "@/lib/watchlist";
 import type { TrendDirection, TrendSignal } from "@/types";
 import { getClientWatchlistOwner } from "@/lib/client-owner";
+import { reportRequestHeaders } from "@/lib/report-api-client";
 
 const DIRECTIONS: { value: TrendDirection | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -43,6 +44,7 @@ export default function FeedClient({
   dataSource: "supabase" | "mock";
 }) {
   const searchParams = useSearchParams();
+  const [allSignals, setAllSignals] = useState<TrendSignal[]>(signals);
   const [dirFilter, setDirFilter] = useState<string>("all");
   const [catFilter, setCatFilter] = useState<string>("all");
   const [originFilter, setOriginFilter] = useState("all");
@@ -58,6 +60,18 @@ export default function FeedClient({
       const nextOwner = await getClientWatchlistOwner();
       setOwner(nextOwner);
       setWatching(await getWatchedSignalIds(nextOwner));
+
+      const response = await fetch("/api/trend-signals/my-analyses", {
+        headers: await reportRequestHeaders(),
+      });
+      const payload = await response.json();
+      if (response.ok && payload.success && Array.isArray(payload.signals)) {
+        setAllSignals((current) => {
+          const byId = new Map<string, TrendSignal>();
+          [...payload.signals, ...current].forEach((signal) => byId.set(signal.id, signal));
+          return Array.from(byId.values());
+        });
+      }
     }
 
     loadWatchState().catch((error) => {
@@ -71,17 +85,17 @@ export default function FeedClient({
     const signalId = searchParams.get("signal");
     if (q) setSearch(q);
     if (signalId) {
-      const signal = signals.find((item) => item.id === signalId);
+      const signal = allSignals.find((item) => item.id === signalId);
       if (signal) setSearch(signal.name);
     }
-  }, [searchParams, signals]);
+  }, [searchParams, allSignals]);
 
   const categories = useMemo(() => {
-    return Array.from(new Set(signals.map((signal) => signal.category)));
-  }, [signals]);
+    return Array.from(new Set(allSignals.map((signal) => signal.category)));
+  }, [allSignals]);
 
   const filtered = useMemo(() => {
-    let next = [...signals];
+    let next = [...allSignals];
     if (originFilter === "discovered") {
       next = next.filter((trend) => trend.sourceType !== "from_analysis");
     }
@@ -115,11 +129,11 @@ export default function FeedClient({
       );
     }
     return next;
-  }, [dirFilter, catFilter, originFilter, owner, sort, search, signals]);
+  }, [allSignals, dirFilter, catFilter, originFilter, owner, sort, search]);
 
-  const breakouts = signals.filter((signal) => signal.direction === "breakout").length;
-  const avgScore = signals.length
-    ? Math.round(signals.reduce((sum, trend) => sum + trend.score, 0) / signals.length)
+  const breakouts = allSignals.filter((signal) => signal.direction === "breakout").length;
+  const avgScore = allSignals.length
+    ? Math.round(allSignals.reduce((sum, trend) => sum + trend.score, 0) / allSignals.length)
     : 0;
 
   async function handleWatch(signal: TrendSignal) {
@@ -149,7 +163,7 @@ export default function FeedClient({
     <AppShell title="Trend Feed" subtitle="Live ecommerce opportunity signals · Updated manually in Phase 1">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Signals Tracked", value: signals.length, color: "var(--accent-bright)" },
+          { label: "Signals Tracked", value: allSignals.length, color: "var(--accent-bright)" },
           { label: "Breakout Niches", value: breakouts, color: "#10b981" },
           { label: "Avg Opp. Score", value: avgScore, color: "#f59e0b" },
           { label: "Watching", value: watching.size, color: "#818cf8" },

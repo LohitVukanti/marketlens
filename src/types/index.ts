@@ -42,6 +42,8 @@ export interface ReportData {
 export interface SavedReport {
   id: string;
   created_at: string;
+  user_id?: string | null;
+  session_id?: string | null;
   niche: string;
   location: string;
   target_customer: string;

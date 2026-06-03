@@ -3,6 +3,7 @@ import { createServerSupabase } from "@/lib/supabase";
 import { getUserFromAuthorization } from "@/lib/server-auth";
 import { createOrUpdateTrendSignalFromReport } from "@/lib/tracked-signal";
 import type { SavedReport } from "@/types";
+import { getScopedReport } from "@/lib/report-access";
 
 const FREE_WATCHLIST_LIMIT = 3;
 
@@ -52,22 +53,21 @@ export async function POST(
     return NextResponse.json({ success: false, error: "Missing tracking session." }, { status: 400 });
   }
 
-  const supabase = createServerSupabase();
-  const { data: report, error } = await supabase
-    .from("reports")
-    .select("*")
-    .eq("id", params.id)
-    .single();
+  const owner = { userId: user?.id, sessionId };
+  const { data: report, error } = await getScopedReport(params.id, owner);
 
-  if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 404 });
+  if (error || !report) {
+    return NextResponse.json(
+      { success: false, error: error?.message || "Report not found or access denied." },
+      { status: 404 }
+    );
   }
 
-  const owner = { userId: user?.id, sessionId };
   const signal = await createOrUpdateTrendSignalFromReport(report as SavedReport, owner);
   const signalId = signal.id as string;
   const isWatched = await alreadyWatched(signalId, owner);
   const plan = await getPlan(user?.id);
+  const supabase = createServerSupabase();
 
   if (!isWatched && plan !== "pro") {
     const count = await watchedCount(owner);

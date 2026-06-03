@@ -10,6 +10,8 @@ create extension if not exists "pgcrypto";
 create table if not exists public.reports (
   id              uuid primary key default gen_random_uuid(),
   created_at      timestamptz not null default now(),
+  user_id         uuid references auth.users(id) on delete cascade,
+  session_id      text,
 
   -- Input fields from the analysis form
   niche           text not null,
@@ -30,25 +32,32 @@ create table if not exists public.reports (
 create index if not exists reports_created_at_idx
   on public.reports (created_at desc);
 
+create index if not exists reports_user_created_idx
+  on public.reports (user_id, created_at desc);
+
+create index if not exists reports_session_created_idx
+  on public.reports (session_id, created_at desc)
+  where user_id is null;
+
 -- ---- Row Level Security -------------------------------------
--- By default, allow public read/write (suitable for MVP without auth).
--- In production, add user_id and filter by authenticated user.
 alter table public.reports enable row level security;
 
--- Allow anyone to read reports (MVP — no auth yet)
-create policy "Public read access"
+create policy "Users read own reports"
   on public.reports for select
-  using (true);
+  using (auth.uid() = user_id);
 
--- Allow anyone to insert (MVP — add auth in production)
-create policy "Public insert access"
+create policy "Users insert own reports"
   on public.reports for insert
-  with check (true);
+  with check (auth.uid() = user_id);
 
--- Allow anyone to delete (MVP — restrict to owner in production)
-create policy "Public delete access"
+create policy "Users update own reports"
+  on public.reports for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users delete own reports"
   on public.reports for delete
-  using (true);
+  using (auth.uid() = user_id);
 
 -- ---- Trend signal enum guards -------------------------------
 do $$

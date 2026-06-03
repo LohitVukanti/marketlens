@@ -14,6 +14,7 @@ import { formatDate, truncate, downloadReportJSON, getScoreColors } from "@/lib/
 import { getScoreBand, getScoreLabel } from "@/types";
 import type { SavedReport } from "@/types";
 import { loadReportTrackingStatuses, trackReportInFeed } from "@/lib/report-tracking";
+import { reportRequestHeaders } from "@/lib/report-api-client";
 
 // ---- Report Card Component ----------------------------------
 function ReportCard({
@@ -39,7 +40,10 @@ function ReportCard({
     if (!confirm(`Delete report for "${report.niche}"? This cannot be undone.`)) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/reports/${report.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/reports/${report.id}`, {
+        method: "DELETE",
+        headers: await reportRequestHeaders(),
+      });
       const data = await res.json();
       if (data.success) {
         onDelete(report.id);
@@ -170,7 +174,9 @@ export default function SavedReportsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/reports");
+      const res = await fetch("/api/reports", {
+        headers: await reportRequestHeaders(),
+      });
       const data = await res.json();
       if (!data.success) throw new Error(data.error ?? "Failed to load reports.");
       const nextReports = data.reports ?? [];
