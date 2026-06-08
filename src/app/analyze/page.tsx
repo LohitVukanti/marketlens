@@ -141,11 +141,17 @@ export default function AnalyzePage() {
   function handleMockSubmit() { submit(true); }
   function handleSubmit(e: React.FormEvent) { e.preventDefault(); submit(false); }
 
-  // Client-side query param check: if ?mock=true, auto-submit with mock flag
+  // Client-side query param check: prefill niche, or if ?mock=true auto-submit with mock flag
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const isMockParam = new URLSearchParams(window.location.search).get("mock") === "true";
+    const params = new URLSearchParams(window.location.search);
+    const nicheParam = params.get("niche");
+    if (nicheParam) {
+      setForm((current) => ({ ...current, niche: nicheParam }));
+    }
+
+    const isMockParam = params.get("mock") === "true";
     if (isMockParam) {
       handleMockSubmit();
     }

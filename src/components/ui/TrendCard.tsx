@@ -60,11 +60,22 @@ function formatListingCount(value?: number) {
   return value.toLocaleString();
 }
 
-export default function TrendCard({ signal, onWatch, isWatched = false, isUpdating = false }: {
+export default function TrendCard({
+  signal,
+  onWatch,
+  isWatched = false,
+  isUpdating = false,
+  onDelete,
+  canDelete = false,
+  isDeleting = false,
+}: {
   signal: TrendSignal;
   onWatch?: (s: TrendSignal) => void;
   isWatched?: boolean;
   isUpdating?: boolean;
+  onDelete?: (s: TrendSignal) => void;
+  canDelete?: boolean;
+  isDeleting?: boolean;
 }) {
   const dir = DIRECTION_CONFIG[signal.direction];
   const comp = COMP_CONFIG[signal.competitionLevel];
@@ -190,9 +201,26 @@ export default function TrendCard({ signal, onWatch, isWatched = false, isUpdati
           style={isWatched ? { background: "rgba(99,102,241,0.1)" } : {}}>
           {isUpdating ? "Saving..." : isWatched ? "★ Watching" : "☆ Add to Watchlist"}
         </button>
-        <Link href="/analyze" className="btn-primary text-xs px-4 py-2">
-          Deep Analysis →
+        <Link
+          href={
+            signal.reportId
+              ? `/dashboard?report=${encodeURIComponent(signal.reportId)}`
+              : `/analyze?niche=${encodeURIComponent(signal.keyword || signal.name)}`
+          }
+          className="btn-primary text-xs px-4 py-2"
+        >
+          {signal.reportId ? "Open Analysis" : "Run Deep Analysis"}
         </Link>
+        {canDelete && (
+          <button
+            onClick={() => onDelete?.(signal)}
+            disabled={isDeleting}
+            className="btn-ghost text-xs border border-red-500/20 px-3 py-2"
+            style={{ color: "#f87171" }}
+          >
+            {isDeleting ? "Removing..." : "Remove"}
+          </button>
+        )}
       </div>
     </div>
   );

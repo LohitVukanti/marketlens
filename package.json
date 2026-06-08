@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "rm -f tsconfig.tsbuildinfo && tsc --noEmit --incremental false",
+    "type-check": "rm -f tsconfig.tsbuildinfo && tsc --noEmit --incremental false --project tsconfig.typecheck.json",
     "db:seed": "npx ts-node --project tsconfig.json -e \"require('./scripts/seed').seed()\"",
     "signals:update": "node scripts/signals/update-signals.mjs",
     "seed:signals": "node scripts/signals/update-signals.mjs"

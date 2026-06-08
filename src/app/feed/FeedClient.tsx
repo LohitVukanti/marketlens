@@ -54,6 +54,7 @@ export default function FeedClient({
   const [watching, setWatching] = useState<Set<string>>(new Set());
   const [owner, setOwner] = useState<WatchlistOwner | null>(null);
   const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
+  const [deletingSignalId, setDeletingSignalId] = useState<string | null>(null);
   const [watchError, setWatchError] = useState("");
 
   useEffect(() => {
@@ -157,6 +158,48 @@ export default function FeedClient({
       setWatchError(error instanceof Error ? error.message : "Unable to update watchlist.");
     } finally {
       setPendingSignalId(null);
+    }
+  }
+
+  function ownsAnalysisSignal(signal: TrendSignal) {
+    return Boolean(
+      owner &&
+        signal.sourceType === "from_analysis" &&
+        ((owner.userId && signal.createdByUserId === owner.userId) ||
+          (owner.sessionId && signal.createdBySessionId === owner.sessionId))
+    );
+  }
+
+  async function handleDeleteSignal(signal: TrendSignal) {
+    if (!ownsAnalysisSignal(signal) || deletingSignalId) return;
+    if (!confirm(`Remove "${signal.name}" from Trend Feed? Your saved report will stay in Saved Reports.`)) return;
+
+    const previousSignals = allSignals;
+    const previousWatching = watching;
+    setAllSignals((current) => current.filter((item) => item.id !== signal.id));
+    setWatching((current) => {
+      const next = new Set(current);
+      next.delete(signal.id);
+      return next;
+    });
+    setDeletingSignalId(signal.id);
+    setWatchError("");
+
+    try {
+      const response = await fetch(`/api/trend-signals/${encodeURIComponent(signal.id)}`, {
+        method: "DELETE",
+        headers: await reportRequestHeaders(),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to remove analysis signal.");
+      }
+    } catch (error) {
+      setAllSignals(previousSignals);
+      setWatching(previousWatching);
+      setWatchError(error instanceof Error ? error.message : "Unable to remove analysis signal.");
+    } finally {
+      setDeletingSignalId(null);
     }
   }
 
@@ -283,6 +326,9 @@ export default function FeedClient({
               onWatch={handleWatch}
               isWatched={watching.has(signal.id)}
               isUpdating={pendingSignalId === signal.id}
+              onDelete={handleDeleteSignal}
+              canDelete={ownsAnalysisSignal(signal)}
+              isDeleting={deletingSignalId === signal.id}
             />
           ))}
         </div>

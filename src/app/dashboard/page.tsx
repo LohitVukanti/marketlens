@@ -24,6 +24,26 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadReport() {
       try {
+        const reportId =
+          typeof window === "undefined"
+            ? null
+            : new URLSearchParams(window.location.search).get("report");
+        if (reportId) {
+          const response = await fetch(`/api/reports/${reportId}`, {
+            headers: await reportRequestHeaders(),
+          });
+          const payload = await response.json();
+
+          if (!response.ok || !payload.success || !payload.report) {
+            setAccessDenied(true);
+            return;
+          }
+
+          setReport(payload.report);
+          sessionStorage.setItem("ml_report", JSON.stringify(payload.report));
+          return;
+        }
+
         const stored = sessionStorage.getItem("ml_report");
         if (stored) {
           const parsed = JSON.parse(stored) as SavedReport;
