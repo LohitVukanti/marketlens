@@ -40,7 +40,7 @@ function alertHtml(signal: ReturnType<typeof mapTrendSignalRow>, threshold: numb
       <p><strong>Opportunity score:</strong> ${signal.score}/100</p>
       <p><strong>Your threshold:</strong> ${threshold}</p>
       <p>${signal.whyTrending || signal.summary}</p>
-      <p style="color:#6b7280;font-size:12px">This is a Pro alert placeholder powered by your watchlist thresholds.</p>
+      <p style="color:#6b7280;font-size:12px">This Pro alert was triggered by your watchlist threshold.</p>
     </div>
   `;
 }

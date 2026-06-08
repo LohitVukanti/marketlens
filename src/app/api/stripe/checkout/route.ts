@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
 import { getUserFromAuthorization } from "@/lib/server-auth";
-import { createCheckoutSession, createStripeCustomer } from "@/lib/stripe";
+import { createBillingPortalSession, createCheckoutSession, createStripeCustomer } from "@/lib/stripe";
+
+const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
 
 export async function POST(req: NextRequest) {
   const user = await getUserFromAuthorization(req.headers.get("authorization"));
@@ -12,7 +14,7 @@ export async function POST(req: NextRequest) {
   const supabase = createServerSupabase();
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("user_id, plan, stripe_customer_id")
+    .select("user_id, plan, stripe_customer_id, stripe_subscription_status")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -21,6 +23,34 @@ export async function POST(req: NextRequest) {
   }
 
   let customerId = profile?.stripe_customer_id as string | undefined;
+  const subscriptionStatus = profile?.stripe_subscription_status as string | undefined;
+
+  if (profile?.plan === "pro" || ACTIVE_SUBSCRIPTION_STATUSES.has(subscriptionStatus ?? "")) {
+    if (!customerId) {
+      return NextResponse.json(
+        { success: false, error: "Your account already has an active Pro subscription." },
+        { status: 409 }
+      );
+    }
+
+    try {
+      const portal = await createBillingPortalSession(customerId);
+      return NextResponse.json({
+        success: true,
+        url: portal.url,
+        message: "Your account already has an active Pro subscription. Opening billing portal.",
+      });
+    } catch (portalError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: portalError instanceof Error ? portalError.message : "Open billing portal to manage your subscription.",
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   if (!customerId) {
     const customer = await createStripeCustomer(user.email, user.id);
     customerId = customer.id;

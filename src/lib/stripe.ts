@@ -12,6 +12,17 @@ function requireStripeSecret() {
   return key;
 }
 
+export function createStripeClient() {
+  let Stripe;
+  try {
+    Stripe = Function("return require")()("stripe");
+  } catch {
+    throw new Error("The stripe package is required for webhook verification. Run npm install stripe.");
+  }
+
+  return Stripe(requireStripeSecret());
+}
+
 async function stripeRequest<T>(path: string, params: URLSearchParams) {
   const response = await fetch(`${STRIPE_API_BASE}${path}`, {
     method: "POST",

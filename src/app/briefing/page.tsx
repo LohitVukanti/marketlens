@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { mapTrendSignalRow, type TrendSignalRow } from "@/lib/trend-mapper";
 import { getWatchlistItems } from "@/lib/watchlist";
 import { getClientWatchlistOwner } from "@/lib/client-owner";
+import { reportRequestHeaders } from "@/lib/report-api-client";
 import type { BriefingItem, TrendSignal } from "@/types";
 import Link from "next/link";
 
@@ -113,17 +114,13 @@ export default function BriefingPage() {
         const watchedSignals = watchedItems.map((item) => item.signal);
 
         if (isSupabaseConfigured()) {
-          let analysisQuery = supabase
-            .from("trend_signals")
-            .select("*")
-            .eq("source_type", "from_analysis")
-            .order("opportunity_score", { ascending: false })
-            .limit(5);
-          analysisQuery = owner.userId
-            ? analysisQuery.eq("created_by_user_id", owner.userId)
-            : analysisQuery.eq("created_by_session_id", owner.sessionId);
-
-          const { data: analysisData } = await analysisQuery;
+          const analysisResponse = await fetch("/api/trend-signals/my-analyses", {
+            headers: await reportRequestHeaders(),
+          });
+          const analysisPayload = await analysisResponse.json();
+          const analysisSignals = analysisResponse.ok && analysisPayload.success
+            ? (analysisPayload.signals as TrendSignal[] ?? [])
+            : [];
 
           const { data: globalData, error } = await supabase
             .from("trend_signals")
@@ -135,13 +132,13 @@ export default function BriefingPage() {
           if (error) throw error;
           const combined = [
             ...watchedSignals,
-            ...((analysisData ?? []) as TrendSignalRow[]).map(mapTrendSignalRow),
+            ...analysisSignals,
             ...((globalData ?? []) as TrendSignalRow[]).map(mapTrendSignalRow),
           ];
           const deduped = Array.from(new Map(combined.map((signal) => [signal.id, signal])).values()).slice(0, 8);
           if (deduped.length) {
             setSignals(deduped);
-            setSource(watchedSignals.length || analysisData?.length ? "personalized" : "global");
+            setSource(watchedSignals.length || analysisSignals.length ? "personalized" : "global");
             return;
           }
         }

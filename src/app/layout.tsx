@@ -4,23 +4,8 @@
 // ============================================================
 
 import type { Metadata } from "next";
-import { DM_Sans, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import "./platform.css";
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const dmSerifDisplay = DM_Serif_Display({
-  subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
-  variable: "--font-serif",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "MarketLens — AI Market Intelligence",
@@ -47,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${dmSerifDisplay.variable}`}>
+    <html lang="en">
       <body className="bg-slate-50 text-slate-900 antialiased font-sans min-h-screen">
         {children}
       </body>

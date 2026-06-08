@@ -1,6 +1,7 @@
 // src/components/ui/TrendCard.tsx
 // The core card for trend signal display in the feed.
 "use client";
+import Link from "next/link";
 import type { TrendSignal } from "@/types";
 import { CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/trend-data";
 
@@ -189,9 +190,9 @@ export default function TrendCard({ signal, onWatch, isWatched = false, isUpdati
           style={isWatched ? { background: "rgba(99,102,241,0.1)" } : {}}>
           {isUpdating ? "Saving..." : isWatched ? "★ Watching" : "☆ Add to Watchlist"}
         </button>
-        <button className="btn-primary text-xs px-4 py-2">
+        <Link href="/analyze" className="btn-primary text-xs px-4 py-2">
           Deep Analysis →
-        </button>
+        </Link>
       </div>
     </div>
   );

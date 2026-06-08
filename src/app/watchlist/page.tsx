@@ -223,7 +223,7 @@ export default function WatchlistPage() {
             Free plan:
           </span>
           <span>
-            {items.length}/{FREE_WATCHLIST_LIMIT} watched signals. Pro unlocks unlimited watchlists and advanced alert placeholders.
+            {items.length}/{FREE_WATCHLIST_LIMIT} watched signals. Pro unlocks unlimited watchlists and email alerts.
           </span>
           <Link href="/upgrade" className="ml-auto text-xs font-semibold" style={{ color: "var(--accent-bright)" }}>
             Upgrade
@@ -242,7 +242,7 @@ export default function WatchlistPage() {
               {alerts} watchlist item{alerts > 1 ? "s" : ""} triggered a visual alert
             </p>
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              Email and Slack alerts stay reserved for a later paid tier.
+              Email alerts are available for Pro accounts.
             </p>
           </div>
         </div>

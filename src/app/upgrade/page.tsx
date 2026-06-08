@@ -10,8 +10,8 @@ const FEATURES = [
   "Breakout alert thresholds",
   "Daily personalized briefings",
   "Deeper Reddit and Etsy signal context",
-  "Premium signals placeholder",
-  "Advanced alerts placeholder",
+  "Priority signal monitoring",
+  "Billing management through Stripe",
 ];
 
 export default function UpgradePage() {
@@ -61,7 +61,7 @@ export default function UpgradePage() {
   }
 
   return (
-    <AppShell title="Upgrade" subtitle="Monetization foundation placeholder">
+    <AppShell title="Upgrade" subtitle="Manage MarketLens Pro">
       <div className="max-w-3xl">
         <div className="rounded-2xl p-6 border mb-6" style={{ borderColor: "rgba(99,102,241,0.3)", background: "rgba(99,102,241,0.06)" }}>
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent-bright)" }}>
@@ -69,7 +69,7 @@ export default function UpgradePage() {
           </p>
           <div className="flex flex-wrap items-end gap-3 mb-4">
             <h2 className="text-3xl font-bold" style={{ color: "var(--text-primary)" }}>$19</h2>
-            <p className="text-sm pb-1" style={{ color: "var(--text-muted)" }}>/ month placeholder</p>
+            <p className="text-sm pb-1" style={{ color: "var(--text-muted)" }}>/ month</p>
           </div>
           <p className="text-sm leading-relaxed max-w-2xl" style={{ color: "var(--text-secondary)" }}>
             Unlock unlimited watchlists, breakout alerts, daily briefings, and deeper source intelligence.

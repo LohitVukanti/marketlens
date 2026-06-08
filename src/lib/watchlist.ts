@@ -1,7 +1,6 @@
 "use client";
 
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { mapTrendSignalRow, type TrendSignalRow } from "@/lib/trend-mapper";
+import { supabase } from "@/lib/supabase";
 import type { WatchlistItem } from "@/types";
 import type { MarketLensPlan } from "@/lib/auth";
 
@@ -13,17 +12,6 @@ export type WatchlistOwner = {
   sessionId: string;
   userId?: string | null;
   plan?: MarketLensPlan;
-};
-
-type WatchlistItemRow = {
-  id: string;
-  session_id: string;
-  user_id: string | null;
-  signal_id: string;
-  alert_threshold: number;
-  created_at: string;
-  last_alerted_at: string | null;
-  trend_signals: TrendSignalRow | TrendSignalRow[] | null;
 };
 
 export function getAnonymousSessionId() {
@@ -41,42 +29,36 @@ export function getAnonymousSessionId() {
   return id;
 }
 
-function ownerFilter(query: any, owner: WatchlistOwner) {
-  if (owner.userId) return query.eq("user_id", owner.userId);
-  return query.eq("session_id", owner.sessionId).is("user_id", null);
-}
+async function watchlistRequest(owner: WatchlistOwner, init?: RequestInit) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const headers = new Headers(init?.headers);
+  headers.set("X-MarketLens-Session-Id", owner.sessionId);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
 
-function ownerPayload(owner: WatchlistOwner, signalId: string, alertThreshold = DEFAULT_ALERT_THRESHOLD) {
-  return {
-    session_id: owner.sessionId,
-    user_id: owner.userId ?? null,
-    signal_id: signalId,
-    alert_threshold: alertThreshold,
-  };
+  const response = await fetch("/api/watchlist", {
+    ...init,
+    headers,
+  });
+  const payload = await response.json();
+
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error || "Watchlist request failed.");
+  }
+
+  return payload;
 }
 
 export async function getWatchedSignalIds(owner: WatchlistOwner): Promise<Set<string>> {
-  if (!isSupabaseConfigured() || (!owner.sessionId && !owner.userId)) return new Set<string>();
-
-  const query = supabase
-    .from("watchlist_items")
-    .select("signal_id");
-  const { data, error } = await ownerFilter(query, owner);
-
-  if (error) throw error;
-  return new Set((data ?? []).map((item: { signal_id: string }) => item.signal_id));
+  if (!owner.sessionId && !owner.userId) return new Set<string>();
+  const payload = await watchlistRequest(owner);
+  return new Set((payload.signalIds ?? []) as string[]);
 }
 
 export async function getWatchlistCount(owner: WatchlistOwner) {
-  if (!isSupabaseConfigured() || (!owner.sessionId && !owner.userId)) return 0;
-
-  const query = supabase
-    .from("watchlist_items")
-    .select("id", { count: "exact", head: true });
-  const { count, error } = await ownerFilter(query, owner);
-
-  if (error) throw error;
-  return count ?? 0;
+  if (!owner.sessionId && !owner.userId) return 0;
+  const payload = await watchlistRequest(owner);
+  return Number(payload.count ?? 0);
 }
 
 export async function addWatchlistItem(
@@ -91,66 +73,25 @@ export async function addWatchlistItem(
     }
   }
 
-  const onConflict = owner.userId ? "user_id,signal_id" : "session_id,signal_id";
-  const { error } = await supabase.from("watchlist_items").upsert(
-    ownerPayload(owner, signalId, alertThreshold),
-    { onConflict }
-  );
-
-  if (error) throw error;
+  await watchlistRequest(owner, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ signalId, alertThreshold }),
+  });
 }
 
 export async function removeWatchlistItem(owner: WatchlistOwner, signalId: string) {
-  const query = supabase
-    .from("watchlist_items")
-    .delete()
-    .eq("signal_id", signalId);
-  const { error } = await ownerFilter(query, owner);
-
-  if (error) throw error;
+  await watchlistRequest(owner, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ signalId }),
+  });
 }
 
 export async function getWatchlistItems(owner: WatchlistOwner): Promise<WatchlistItem[]> {
-  if (!isSupabaseConfigured() || (!owner.sessionId && !owner.userId)) return [];
-
-  const query = supabase
-    .from("watchlist_items")
-    .select(
-      `
-      id,
-      session_id,
-      user_id,
-      signal_id,
-      alert_threshold,
-      created_at,
-      last_alerted_at,
-      trend_signals (*)
-    `
-    );
-  const { data, error } = await ownerFilter(query, owner).order("created_at", { ascending: false });
-
-  if (error) throw error;
-
-  return ((data ?? []) as unknown as WatchlistItemRow[])
-    .map((item) => {
-      const signalRow = Array.isArray(item.trend_signals)
-        ? item.trend_signals[0]
-        : item.trend_signals;
-
-      if (!signalRow) return null;
-
-      return {
-        id: item.id,
-        session_id: item.session_id,
-        user_id: item.user_id,
-        signal_id: item.signal_id,
-        alert_threshold: item.alert_threshold,
-        created_at: item.created_at,
-        last_alerted_at: item.last_alerted_at,
-        signal: mapTrendSignalRow(signalRow),
-      };
-    })
-    .filter((item): item is WatchlistItem => Boolean(item));
+  if (!owner.sessionId && !owner.userId) return [];
+  const payload = await watchlistRequest(owner);
+  return (payload.items ?? []) as WatchlistItem[];
 }
 
 export async function updateWatchlistThreshold(
@@ -158,42 +99,30 @@ export async function updateWatchlistThreshold(
   owner: WatchlistOwner,
   alertThreshold: number
 ) {
-  const query = supabase
-    .from("watchlist_items")
-    .update({ alert_threshold: alertThreshold })
-    .eq("id", itemId);
-  const { error } = await ownerFilter(query, owner);
-
-  if (error) throw error;
+  await watchlistRequest(owner, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itemId, alertThreshold }),
+  });
 }
 
 export async function migrateAnonymousWatchlistToUser(sessionId: string, userId: string) {
-  if (!isSupabaseConfigured() || !sessionId || !userId) return;
+  if (!sessionId || !userId) return;
 
-  const anonymousItems = await getWatchlistItems({ sessionId });
-  if (!anonymousItems.length) return;
-  const userSignalIds = await getWatchedSignalIds({ sessionId, userId });
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return;
 
-  for (const item of anonymousItems) {
-    if (userSignalIds.has(item.signal_id)) {
-      const { error: deleteDuplicateError } = await supabase
-        .from("watchlist_items")
-        .delete()
-        .eq("id", item.id)
-        .eq("session_id", sessionId)
-        .is("user_id", null);
+  const response = await fetch("/api/watchlist/migrate", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-MarketLens-Session-Id": sessionId,
+    },
+  });
+  const payload = await response.json();
 
-      if (deleteDuplicateError) throw deleteDuplicateError;
-      continue;
-    }
-
-    const { error: updateError } = await supabase
-      .from("watchlist_items")
-      .update({ user_id: userId })
-      .eq("id", item.id)
-      .eq("session_id", sessionId)
-      .is("user_id", null);
-
-    if (updateError) throw updateError;
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error || "Could not migrate anonymous watchlist.");
   }
 }

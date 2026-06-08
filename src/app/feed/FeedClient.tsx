@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import AppShell from "@/components/layout/AppShell";
 import TrendCard from "@/components/ui/TrendCard";
 import { CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/trend-data";
@@ -160,7 +161,7 @@ export default function FeedClient({
   }
 
   return (
-    <AppShell title="Trend Feed" subtitle="Live ecommerce opportunity signals · Updated manually in Phase 1">
+    <AppShell title="Trend Feed" subtitle="Live ecommerce opportunity signals">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
           { label: "Signals Tracked", value: allSignals.length, color: "var(--accent-bright)" },
@@ -295,9 +296,11 @@ export default function FeedClient({
           Pro unlocks real-time alerts, full trend history, and additional signals
         </p>
         <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-          Phase 1 uses Google Trends plus Supabase. Monetization is intentionally not wired yet.
+          Upgrade for unlimited tracking, email alerts, and deeper signal context.
         </p>
-        <button className="btn-primary text-sm px-6 py-2.5">Upgrade to Pro</button>
+        <Link href="/upgrade" className="btn-primary text-sm px-6 py-2.5">
+          Upgrade to Pro
+        </Link>
       </div>
     </AppShell>
   );

@@ -68,6 +68,7 @@ async function runDailyBriefingJob(req: NextRequest) {
       const { data: globalSignals } = await supabase
         .from("trend_signals")
         .select("*")
+        .neq("source_type", "from_analysis")
         .order("opportunity_score", { ascending: false })
         .limit(profile.plan === "pro" ? 8 : 3);
       signalRows = (globalSignals ?? []) as TrendSignalRow[];
