@@ -11,19 +11,19 @@ import type { AnalysisFormInputs, ReportData, OpportunityFactor } from "@/types"
 export function buildAnalysisPrompt(inputs: AnalysisFormInputs): string {
   const { niche, location, customer, productType, priceRange, competitors } = inputs;
 
-  return `You are a senior market intelligence analyst and econometrics consultant specializing in small business strategy.
+  return `You are a senior ecommerce product trend analyst specializing in Etsy, Shopify, print-on-demand, handmade products, digital products, and online marketplace competition.
 
-Analyze the following business opportunity and return ONLY a valid JSON object â€” no markdown fences, no commentary, no preamble. The JSON must match this exact schema:
+Analyze whether the following product opportunity is worth selling online and return ONLY a valid JSON object - no markdown fences, no commentary, no preamble. The JSON must match this exact schema:
 
 {
   "marketScore": <integer 0-100. Calculated as the sum of 5 factors below, each scored 0-20>,
-  "summary": <string: 2-3 paragraph executive summary covering market context, opportunity size, and competitive landscape>,
+  "summary": <string: 2-3 paragraph executive summary covering ecommerce demand, trend maturity, saturation risk, and competitive landscape>,
   "targetCustomer": <string: detailed customer persona with demographics, psychographics, shopping behavior, average order value>,
   "competitorPositioning": <string: analysis of the competitive landscape, naming specific incumbents and their strategic weaknesses>,
   "pricingRecommendation": <string: specific pricing strategy with concrete price points, bundle ideas, and psychological pricing rationale>,
   "customerPainPoints": <array of 5-6 specific, concrete pain point strings>,
-  "demandTrend": <string: trend analysis with any relevant market data, search trend signals, or industry statistics>,
-  "differentiationStrategy": <string: specific, actionable differentiation tactics unique to this niche and location>,
+  "demandTrend": <string: trend analysis with any relevant market data, search trend signals, marketplace observations, or industry statistics. Do not invent sales or revenue data.>,
+  "differentiationStrategy": <string: specific, actionable differentiation tactics unique to this product niche, buyer, and sales channel>,
   "marketingChannels": <array of 6-7 specific channel strings, each with a brief tactic note>,
   "risks": <array of 5-6 specific risk strings with mitigation hints>,
   "actionPlan": <array of exactly 6 sequential action item strings, each beginning with a timeframe like "Week 1-2:">,
@@ -49,15 +49,15 @@ Analyze the following business opportunity and return ONLY a valid JSON object â
 
 IMPORTANT: marketScore MUST equal the exact sum of the 5 opportunityFactors values.
 
-Business details to analyze:
-- Niche / Idea: ${niche}
-- Location / Target Market: ${location}
+Product details to analyze:
+- Product Keyword / Niche: ${niche}
+- Target Market / Channel: ${location}
 - Target Customer: ${customer}
-- Product / Service Type: ${productType}
+- Product Type: ${productType}
 ${priceRange ? `- Price Range: ${priceRange}` : "- Price Range: Not specified (recommend one)"}
 ${competitors ? `- Known Competitors: ${competitors}` : "- Competitors: Not specified (identify the main ones)"}
 
-Be specific, data-informed, locally relevant, and immediately actionable. Return only the JSON object.`;
+Be specific, data-informed, ecommerce-focused, and immediately actionable. Clearly say when evidence is directional or needs validation. Do not promise revenue, sales volume, or guaranteed outcomes unless the user provided real sales data. Return only the JSON object.`;
 }
 
 // ---- Response Parser ----------------------------------------

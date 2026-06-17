@@ -6,6 +6,7 @@ import type { TrendSignal } from "@/types";
 import { CATEGORY_ICONS, CATEGORY_LABELS } from "@/lib/trend-data";
 
 function Sparkline({ data }: { data: number[] }) {
+  if (!data.length) return <div className="w-20 h-8" />;
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -49,6 +50,13 @@ const COMP_CONFIG = {
   high:   { label: "High Competition",   cls: "badge-red" },
 };
 
+const QUALITY_CONFIG = {
+  verified: { label: "Verified", cls: "badge-green" },
+  emerging: { label: "Emerging", cls: "badge-blue" },
+  needs_confirmation: { label: "Needs Confirmation", cls: "badge-amber" },
+  demo: { label: "Demo/Fallback", cls: "badge-gray" },
+};
+
 function formatGrowth(value?: number) {
   if (typeof value !== "number") return "n/a";
   if (value === 0) return "0%";
@@ -79,7 +87,10 @@ export default function TrendCard({
 }) {
   const dir = DIRECTION_CONFIG[signal.direction];
   const comp = COMP_CONFIG[signal.competitionLevel];
-  const scoreColor = signal.score >= 80 ? "#10b981" : signal.score >= 60 ? "#f59e0b" : "#ef4444";
+  const quality = QUALITY_CONFIG[signal.dataQuality ?? (signal.isDemoData ? "demo" : "needs_confirmation")];
+  const displayScore = signal.emergenceScore ?? signal.score;
+  const scoreColor = displayScore >= 80 ? "#10b981" : displayScore >= 60 ? "#f59e0b" : "#ef4444";
+  const updatedAt = signal.lastUpdatedAt || signal.detectedAt;
 
   return (
     <div className="card-hover rounded-2xl p-5 animate-in flex flex-col gap-4">
@@ -96,6 +107,7 @@ export default function TrendCard({
             <span className={`badge ${signal.sourceType === "from_analysis" ? "badge-purple" : "badge-gray"} text-[10px]`}>
               {signal.sourceType === "from_analysis" ? "From Analysis" : "Discovered"}
             </span>
+            <span className={`badge ${quality.cls} text-[10px]`}>{quality.label}</span>
           </div>
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
             {CATEGORY_LABELS[signal.category]} · {signal.niche}
@@ -105,16 +117,16 @@ export default function TrendCard({
         <div className="flex items-center gap-4 flex-shrink-0">
           <Sparkline data={signal.sparkline} />
           <div className="text-right">
-            <div className="text-2xl font-bold mono" style={{ color: scoreColor }}>{signal.score}</div>
+            <div className="text-2xl font-bold mono" style={{ color: scoreColor }}>{displayScore}</div>
             <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-              {signal.weeklyChange >= 0 ? "+" : ""}{signal.weeklyChange} this wk
+              Emergence
             </div>
           </div>
         </div>
       </div>
 
       {/* Score bar */}
-      <ScoreBar score={signal.score} />
+      <ScoreBar score={displayScore} />
 
       {/* Summary */}
       <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
@@ -127,12 +139,10 @@ export default function TrendCard({
             Google Trends
           </p>
           <p className="text-xs font-semibold mono" style={{ color: "var(--text-primary)" }}>
-            {signal.velocityScore !== undefined && signal.velocityScore >= 0 ? "+" : ""}
-            {signal.velocityScore ?? signal.momentum} velocity
+            {signal.googleGrowth4w !== undefined ? formatGrowth(signal.googleGrowth4w) : `${signal.velocityScore ?? signal.momentum} pts`}
           </p>
           <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-            Accel {signal.accelerationScore !== undefined && signal.accelerationScore >= 0 ? "+" : ""}
-            {signal.accelerationScore ?? "n/a"}
+            8w {signal.googleGrowth8w !== undefined ? formatGrowth(signal.googleGrowth8w) : "n/a"} · accel {signal.accelerationScore ?? "n/a"}
           </p>
         </div>
         <div className="rounded-lg p-2" style={{ background: "var(--bg-hover)" }}>
@@ -154,7 +164,7 @@ export default function TrendCard({
             {formatListingCount(signal.etsyListingCount)} listings
           </p>
           <p className="text-[10px] capitalize" style={{ color: "var(--text-muted)" }}>
-            {signal.etsyCompetitionLevel || signal.competitionLevel} competition
+            {signal.etsyCompetitionLevel || signal.competitionLevel} competition · sat {signal.etsySaturationScore ?? "n/a"}
           </p>
         </div>
         <div className="rounded-lg p-2" style={{ background: "var(--bg-hover)" }}>
@@ -165,7 +175,7 @@ export default function TrendCard({
             {signal.confidenceScore ?? 0}/100
           </p>
           <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-            {signal.sourceCount ?? 1} source{(signal.sourceCount ?? 1) === 1 ? "" : "s"}
+            {signal.sourceCount ?? 1} source{(signal.sourceCount ?? 1) === 1 ? "" : "s"} · {signal.sourceConfidence ?? 0} agreement
           </p>
         </div>
       </div>
@@ -181,6 +191,12 @@ export default function TrendCard({
         {signal.trendState && (
           <span className="badge badge-blue text-[10px]">{signal.trendState}</span>
         )}
+        <span className="badge badge-gray text-[10px]">
+          Age {signal.trendAgeWeeks ?? "n/a"}w
+        </span>
+        <span className="badge badge-gray text-[10px]">
+          Updated {updatedAt ? new Date(updatedAt).toLocaleDateString() : "n/a"}
+        </span>
         {signal.platforms.map(p => (
           <span key={p} className="badge badge-purple text-[10px]">{p}</span>
         ))}

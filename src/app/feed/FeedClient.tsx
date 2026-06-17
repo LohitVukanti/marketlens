@@ -37,6 +37,14 @@ const ORIGINS = [
   { value: "my-analyses", label: "My Analyses" },
 ];
 
+const QUALITY_FILTERS = [
+  { value: "all", label: "All Quality" },
+  { value: "verified", label: "Verified" },
+  { value: "emerging", label: "Emerging" },
+  { value: "needs_confirmation", label: "Needs Confirmation" },
+  { value: "demo", label: "Demo/Fallback" },
+];
+
 export default function FeedClient({
   signals,
   dataSource,
@@ -49,6 +57,7 @@ export default function FeedClient({
   const [dirFilter, setDirFilter] = useState<string>("all");
   const [catFilter, setCatFilter] = useState<string>("all");
   const [originFilter, setOriginFilter] = useState("all");
+  const [qualityFilter, setQualityFilter] = useState("all");
   const [sort, setSort] = useState("score");
   const [search, setSearch] = useState("");
   const [watching, setWatching] = useState<Set<string>>(new Set());
@@ -112,6 +121,16 @@ export default function FeedClient({
           )
       );
     }
+    if (qualityFilter === "all" && dataSource !== "mock") {
+      next = next.filter((trend) => !trend.isDemoData && trend.dataQuality !== "demo");
+    }
+    if (qualityFilter !== "all") {
+      next = next.filter((trend) =>
+        qualityFilter === "demo"
+          ? trend.isDemoData || trend.dataQuality === "demo"
+          : trend.dataQuality === qualityFilter
+      );
+    }
     if (dirFilter !== "all") next = next.filter((trend) => trend.direction === dirFilter);
     if (catFilter !== "all") next = next.filter((trend) => trend.category === catFilter);
     if (search.trim()) {
@@ -123,7 +142,15 @@ export default function FeedClient({
           trend.tags.some((tag) => tag.toLowerCase().includes(q))
       );
     }
-    if (sort === "score") next.sort((a, b) => b.score - a.score);
+    if (sort === "score") {
+      const qualityRank = { verified: 4, emerging: 3, needs_confirmation: 2, demo: 1 };
+      next.sort((a, b) => {
+        const rankDiff =
+          (qualityRank[b.dataQuality ?? (b.isDemoData ? "demo" : "needs_confirmation")] ?? 0) -
+          (qualityRank[a.dataQuality ?? (a.isDemoData ? "demo" : "needs_confirmation")] ?? 0);
+        return rankDiff || (b.emergenceScore ?? b.score) - (a.emergenceScore ?? a.score);
+      });
+    }
     if (sort === "momentum") next.sort((a, b) => b.momentum - a.momentum);
     if (sort === "new") {
       next.sort(
@@ -131,7 +158,7 @@ export default function FeedClient({
       );
     }
     return next;
-  }, [allSignals, dirFilter, catFilter, originFilter, owner, sort, search]);
+  }, [allSignals, dataSource, dirFilter, catFilter, originFilter, qualityFilter, owner, sort, search]);
 
   const breakouts = allSignals.filter((signal) => signal.direction === "breakout").length;
   const avgScore = allSignals.length
@@ -277,6 +304,18 @@ export default function FeedClient({
 
         <select
           className="input-base text-xs py-2 w-auto"
+          value={qualityFilter}
+          onChange={(event) => setQualityFilter(event.target.value)}
+        >
+          {QUALITY_FILTERS.map((quality) => (
+            <option key={quality.value} value={quality.value}>
+              {quality.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="input-base text-xs py-2 w-auto"
           value={sort}
           onChange={(event) => setSort(event.target.value)}
         >
@@ -315,7 +354,11 @@ export default function FeedClient({
 
       {filtered.length === 0 ? (
         <div className="text-center py-20" style={{ color: "var(--text-muted)" }}>
-          <p className="text-sm">No signals match your filters.</p>
+          <p className="text-sm">
+            {dataSource === "mock"
+              ? "No demo signals match your filters."
+              : "No verified ecommerce trend signals are available yet. Run the collector or loosen the filters."}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">

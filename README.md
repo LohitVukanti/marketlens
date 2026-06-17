@@ -1,6 +1,6 @@
-# MarketLens — AI Market Intelligence Platform
+# MarketLens - Ecommerce Product Trend Intelligence
 
-A full-stack MVP that generates AI-powered market intelligence reports for small businesses, Etsy sellers, restaurant owners, and local entrepreneurs.
+A full-stack MVP for ecommerce sellers who want to find product trends before they go mainstream.
 
 Built with **Next.js 14 · TypeScript · Tailwind CSS · OpenAI · Supabase · Recharts**.
 
@@ -8,7 +8,7 @@ Built with **Next.js 14 · TypeScript · Tailwind CSS · OpenAI · Supabase · R
 
 ## What It Does
 
-Enter a business idea, location, and target customer → get a complete market intelligence report in under 60 seconds including:
+Enter a product keyword, target market, and customer profile to get a product opportunity report including:
 
 - **Market Opportunity Score** (0–100) built from 5 econometric sub-factors
 - Target customer profile & psychographics
@@ -148,7 +148,7 @@ The app works **completely without any API keys** using mock mode:
 - Set `NEXT_PUBLIC_MOCK_MODE=true` in `.env.local`, OR
 - Visit `http://localhost:3000/analyze?mock=true`
 
-This loads a fully rendered sample report (handmade soy candle business in Tampa, FL).
+This loads a fully rendered sample report for a pet loss memorial candle product opportunity.
 
 ---
 
@@ -342,7 +342,7 @@ where user_id = '00000000-0000-0000-0000-000000000000';
 ```
 
 9. Reload the app and confirm the sidebar shows Pro and watchlist additions are unlimited.
-10. Open `/upgrade` and confirm the Stripe placeholder offer is visible.
+10. Open `/upgrade` and confirm the Stripe upgrade offer is visible.
 
 ### Final Monetization: Stripe and Resend
 
@@ -588,7 +588,7 @@ The **Market Opportunity Score (0–100)** is a composite index of 5 equally-wei
 | **Competition (inverted)** | Higher score = less entrenched competition. Assessed by number of competitors, their resource levels, and market saturation |
 | **Pricing Power** | Ability to command premium pricing based on product differentiation, customer willingness to pay, and perceived value |
 | **Pain Severity** | How acute and underserved the target customer's problems are — a proxy for organic demand pull |
-| **Differentiation Potential** | How many viable differentiation vectors exist (local identity, customization, subscription, etc.) |
+| **Differentiation Potential** | How many viable differentiation vectors exist (positioning, personalization, bundling, design, channel focus, etc.) |
 
 This approach mirrors index construction methods from applied econometrics (weighted factor models), making it explainable and auditable rather than a black-box AI score.
 
@@ -613,7 +613,7 @@ This approach mirrors index construction methods from applied econometrics (weig
 - **Freemium**: 3 free reports/month, unlimited on Pro ($19/mo)
 - **API access**: Programmatic report generation for agencies and tools
 - **White-label**: Branded reports for business consultants
-- **Industry verticals**: Pre-built report templates for restaurants, Etsy, SaaS
+- **Industry verticals**: Pre-built report templates for Etsy, Shopify, POD, digital products, and handmade sellers
 - **AI follow-up chat**: Ask follow-up questions on your report
 
 ---

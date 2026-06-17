@@ -8,7 +8,7 @@ type TrackingOwner = {
 
 const CATEGORY_KEYWORDS: Array<{ category: TrendCategory; terms: string[] }> = [
   { category: "digital-products", terms: ["digital", "template", "notion", "course", "software", "app", "saas", "spreadsheet"] },
-  { category: "food-beverage", terms: ["food", "restaurant", "cafe", "coffee", "tea", "sourdough", "bakery", "kitchen"] },
+  { category: "food-beverage", terms: ["coffee", "tea", "candle", "kitchen", "snack", "gift box"] },
   { category: "apparel", terms: ["apparel", "shirt", "clothing", "fashion", "bag", "accessory", "tote"] },
   { category: "beauty", terms: ["beauty", "wellness", "skin", "soap", "cosmetic", "candle"] },
   { category: "pets", terms: ["pet", "dog", "cat"] },
@@ -104,7 +104,15 @@ export async function createOrUpdateTrendSignalFromReport(report: SavedReport, o
     velocity_score: velocity,
     acceleration_score: acceleration,
     opportunity_score: score,
+    emergence_score: Math.max(25, Math.min(65, Math.round(score * 0.72))),
     confidence_score: report.is_mock ? 45 : 62,
+    data_quality: report.is_mock ? "demo" : "needs_confirmation",
+    is_demo_data: report.is_mock,
+    google_growth_4w: null,
+    google_growth_8w: null,
+    etsy_saturation_score: null,
+    first_detected_at: now,
+    trend_age_weeks: 0,
     trend_state: trendState,
     summary,
     tags: tagsForReport(report),
@@ -136,10 +144,24 @@ export async function createOrUpdateTrendSignalFromReport(report: SavedReport, o
     .select("*")
     .single();
 
-  if (error && /column .* (source_type|report_id|created_by)/i.test(error.message)) {
+  if (error && /column .* (source_type|report_id|created_by|emergence_score|data_quality|is_demo_data|google_growth_|etsy_saturation_score|first_detected_at|trend_age_weeks)/i.test(error.message)) {
     const legacyRow = Object.fromEntries(
       Object.entries(row).filter(
-        ([key]) => !["source_type", "report_id", "created_by_user_id", "created_by_session_id"].includes(key)
+        ([key]) =>
+          ![
+            "source_type",
+            "report_id",
+            "created_by_user_id",
+            "created_by_session_id",
+            "emergence_score",
+            "data_quality",
+            "is_demo_data",
+            "google_growth_4w",
+            "google_growth_8w",
+            "etsy_saturation_score",
+            "first_detected_at",
+            "trend_age_weeks",
+          ].includes(key)
       )
     );
     ({ data, error } = await supabase

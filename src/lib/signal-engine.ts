@@ -19,68 +19,68 @@ export type SignalSource = "google_trends" | "fallback_seed" | "mock";
 
 export const PRODUCT_KEYWORDS: ProductKeyword[] = [
   {
-    keyword: "mushroom lamp",
-    niche: "Ambient Lighting / Home Decor",
+    keyword: "bow phone charm",
+    niche: "Accessories / Phone Charms",
     category: "home-decor",
-    avgPrice: "$28-$65",
+    avgPrice: "$8-$22",
     competitionLevel: "low",
-    tags: ["cottagecore", "aesthetic", "lighting"],
+    tags: ["coquette", "phone charm", "giftable"],
   },
   {
-    keyword: "crochet cup holder",
-    niche: "Drinkware Accessories",
+    keyword: "pickleball bag charm",
+    niche: "Sports Accessories / Gifts",
     category: "apparel",
-    avgPrice: "$12-$35",
+    avgPrice: "$10-$28",
     competitionLevel: "low",
-    tags: ["crochet", "accessories", "giftable"],
+    tags: ["pickleball", "bag charm", "personalized"],
   },
   {
-    keyword: "custom pet portrait",
-    niche: "Digital Art / Pet Products",
+    keyword: "pet loss memorial candle",
+    niche: "Pet Memorial / Home Fragrance",
     category: "pets",
-    avgPrice: "$15-$45",
+    avgPrice: "$18-$45",
     competitionLevel: "medium",
-    tags: ["pets", "personalized", "digital download"],
+    tags: ["pet memorial", "sympathy gift", "candle"],
   },
   {
-    keyword: "suncatcher window hanging",
-    niche: "Home Decor / Crystal",
-    category: "home-decor",
-    avgPrice: "$18-$55",
-    competitionLevel: "low",
-    tags: ["crystals", "rainbow", "decor"],
-  },
-  {
-    keyword: "digital planner goodnotes",
-    niche: "Digital Products / Stationery",
+    keyword: "wedding newspaper program",
+    niche: "Wedding Stationery / Templates",
     category: "digital-products",
-    avgPrice: "$8-$24",
-    competitionLevel: "medium",
-    tags: ["planner", "GoodNotes", "digital"],
-  },
-  {
-    keyword: "sourdough starter kit",
-    niche: "Food & Beverage / Kitchen",
-    category: "food-beverage",
-    avgPrice: "$18-$42",
-    competitionLevel: "medium",
-    tags: ["sourdough", "baking", "DIY"],
-  },
-  {
-    keyword: "fitness tracker spreadsheet",
-    niche: "Digital Products / Fitness",
-    category: "fitness",
-    avgPrice: "$5-$19",
+    avgPrice: "$9-$29",
     competitionLevel: "low",
-    tags: ["fitness", "spreadsheet", "tracker"],
+    tags: ["wedding", "newspaper", "template"],
   },
   {
-    keyword: "notion ai template",
+    keyword: "notion second brain template",
     niche: "Digital Products / Productivity",
     category: "digital-products",
-    avgPrice: "$9-$37",
-    competitionLevel: "high",
-    tags: ["notion", "AI", "productivity"],
+    avgPrice: "$12-$49",
+    competitionLevel: "medium",
+    tags: ["notion", "productivity", "template"],
+  },
+  {
+    keyword: "baby name sign acrylic",
+    niche: "Baby / Nursery Decor",
+    category: "kids",
+    avgPrice: "$18-$58",
+    competitionLevel: "low",
+    tags: ["baby", "nursery", "personalized"],
+  },
+  {
+    keyword: "pilates grip socks bow",
+    niche: "Fitness Accessories / Apparel",
+    category: "apparel",
+    avgPrice: "$12-$26",
+    competitionLevel: "low",
+    tags: ["pilates", "grip socks", "coquette"],
+  },
+  {
+    keyword: "canva brand kit template",
+    niche: "Digital Products / Shopify Branding",
+    category: "digital-products",
+    avgPrice: "$15-$59",
+    competitionLevel: "medium",
+    tags: ["canva", "branding", "shopify"],
   },
 ];
 
@@ -99,8 +99,8 @@ function seededRand(seed: number) {
 }
 
 function fallbackSeries(seed: number) {
-  const base = 18 + seededRand(seed) * 42;
-  const slope = -2 + seededRand(seed + 7) * 12;
+  const base = 8 + seededRand(seed) * 24;
+  const slope = 1 + seededRand(seed + 7) * 8;
   return Array.from({ length: 12 }, (_, index) => {
     const noise = (seededRand(seed + index * 3) - 0.45) * 14;
     return clamp(base + index * slope + noise, 1, 100);
@@ -135,21 +135,49 @@ function confidenceScore(values: number[], source: SignalSource) {
   return clamp(coverage * 0.72 + sourceWeight);
 }
 
-function opportunityScore(params: {
+function percentChange(current: number, previous: number) {
+  if (previous <= 0 && current <= 0) return 0;
+  if (previous <= 0) return Math.min(300, current * 100);
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+function saturationScore(level: ProductKeyword["competitionLevel"]) {
+  return { low: 86, medium: 58, high: 28 }[level];
+}
+
+function emergenceScore(params: {
   currentValue: number;
   velocityScore: number;
   accelerationScore: number;
+  growth4w: number;
+  growth8w: number;
   confidence: number;
   competitionLevel: ProductKeyword["competitionLevel"];
 }) {
-  const competitionBoost = { low: 14, medium: 5, high: -8 }[params.competitionLevel];
+  const accelerationComponent = clamp(50 + params.accelerationScore * 2.4);
+  const growth4wComponent = clamp(50 + params.growth4w * 0.45);
+  const redditComponent = 35;
+  const etsyComponent = saturationScore(params.competitionLevel);
+  const confidenceComponent = params.confidence;
+  const flatDemandPenalty = params.currentValue >= 70 && Math.abs(params.velocityScore) < 7 ? 18 : 0;
+  const stalePenalty = params.growth8w < 8 ? 10 : 0;
+
   return clamp(
-    params.currentValue * 0.36 +
-      params.velocityScore * 0.8 +
-      params.accelerationScore * 0.45 +
-      params.confidence * 0.18 +
-      competitionBoost
+    accelerationComponent * 0.30 +
+      growth4wComponent * 0.20 +
+      redditComponent * 0.15 +
+      etsyComponent * 0.20 +
+      confidenceComponent * 0.15 -
+      flatDemandPenalty -
+      stalePenalty
   );
+}
+
+function dataQuality(source: SignalSource, confidence: number, sourceCount = 1): TrendSignal["dataQuality"] {
+  if (source === "fallback_seed") return "demo";
+  if (confidence < 45 || sourceCount < 2) return "needs_confirmation";
+  if (confidence >= 72 && sourceCount >= 2) return "verified";
+  return "emerging";
 }
 
 function summaryFor(signal: {
@@ -162,10 +190,7 @@ function summaryFor(signal: {
   confidence: number;
   source: SignalSource;
 }) {
-  const sourceText =
-    signal.source === "google_trends"
-      ? "Google Trends interest"
-      : "Fallback demo trend model";
+  const sourceText = signal.source === "google_trends" ? "Google Trends interest" : "Demo fallback model";
   const movement =
     signal.velocityScore >= 0
       ? `${signal.velocityScore} points above baseline`
@@ -181,19 +206,25 @@ export function buildSignalsFromSeries(
   return PRODUCT_KEYWORDS.map((product, index) => {
     const found = series.find((item) => item.keyword === product.keyword);
     const values = found?.values?.length ? found.values : fallbackSeries(index + 11);
-    const recent = values.slice(-3);
-    const previous = values.slice(-6, -3);
+    const recent = values.slice(-4);
+    const previous = values.slice(-8, -4);
     const currentValue = clamp(avg(recent));
-    const baselineValue = clamp(avg(values.slice(0, Math.max(values.length - 3, 1))));
+    const baselineValue = clamp(avg(values.slice(0, Math.max(values.length - 4, 1))));
     const previousAvg = avg(previous);
     const velocityScore = clamp(currentValue - baselineValue, -100, 100);
     const accelerationScore = clamp(avg(recent) - previousAvg, -100, 100);
+    const growth4w = percentChange(avg(values.slice(-4)), avg(values.slice(-8, -4)));
+    const growth8w = percentChange(avg(values.slice(-4)), avg(values.slice(-12, -8)));
     const state = trendState(currentValue, velocityScore, accelerationScore, baselineValue);
     const confidence = confidenceScore(values, found?.source ?? source);
-    const score = opportunityScore({
+    const signalSource = found?.source ?? source;
+    const quality = dataQuality(signalSource, confidence);
+    const score = emergenceScore({
       currentValue,
       velocityScore,
       accelerationScore,
+      growth4w,
+      growth8w,
       confidence,
       competitionLevel: product.competitionLevel,
     });
@@ -205,15 +236,24 @@ export function buildSignalsFromSeries(
       niche: product.niche,
       category: product.category,
       score,
+      emergenceScore: score,
       opportunityScore: score,
       momentum: velocityScore,
       velocityScore,
       accelerationScore,
       confidenceScore: confidence,
+      googleGrowth4w: growth4w,
+      googleGrowth8w: growth8w,
+      etsySaturationScore: saturationScore(product.competitionLevel),
+      dataQuality: quality,
+      isDemoData: signalSource === "fallback_seed",
+      firstDetectedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7 * (index + 1)).toISOString(),
+      lastUpdatedAt: new Date().toISOString(),
+      trendAgeWeeks: index + 1,
       currentTrendValue: currentValue,
       baselineTrendValue: baselineValue,
       trendState: state,
-      signalSource: found?.source ?? source,
+      signalSource,
       direction: directionForState(state),
       weeklyChange: velocityScore,
       searchVolume: currentValue >= 70 ? "High" : currentValue >= 35 ? "Medium" : "Low",
@@ -229,7 +269,7 @@ export function buildSignalsFromSeries(
         velocityScore,
         accelerationScore,
         confidence,
-        source: found?.source ?? source,
+        source: signalSource,
       }),
       detectedAt: new Date().toISOString(),
       sparkline: values.slice(-8).map((value) => clamp(value)),

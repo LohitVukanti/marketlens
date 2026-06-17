@@ -15,9 +15,13 @@ function hasSupabaseEnv() {
   );
 }
 
+function mockModeEnabled() {
+  return process.env.NEXT_PUBLIC_MOCK_MODE === "true";
+}
+
 export async function getFeedSignals(): Promise<FeedSignalResult> {
   if (!hasSupabaseEnv()) {
-    return { signals: TREND_SIGNALS, source: "mock" };
+    return mockModeEnabled() ? { signals: TREND_SIGNALS, source: "mock" } : { signals: [], source: "supabase" };
   }
 
   const supabase = createClient(
@@ -52,11 +56,11 @@ export async function getFeedSignals(): Promise<FeedSignalResult> {
 
     if (error) {
       console.warn("[signals] Falling back to mock trend feed:", error.message);
-      return { signals: TREND_SIGNALS, source: "mock" };
+      return mockModeEnabled() ? { signals: TREND_SIGNALS, source: "mock" } : { signals: [], source: "supabase" };
     }
 
     if (!data?.length) {
-      return { signals: TREND_SIGNALS, source: "mock" };
+      return mockModeEnabled() ? { signals: TREND_SIGNALS, source: "mock" } : { signals: [], source: "supabase" };
     }
 
     return { signals: (data as TrendSignalRow[]).map(mapTrendSignalRow), source: "supabase" };
@@ -69,8 +73,12 @@ export async function getFeedSignals(): Promise<FeedSignalResult> {
   const rows = Array.from(rowsById.values());
 
   if (!rows.length) {
-    return { signals: TREND_SIGNALS, source: "mock" };
+    return mockModeEnabled() ? { signals: TREND_SIGNALS, source: "mock" } : { signals: [], source: "supabase" };
   }
 
-  return { signals: rows.map(mapTrendSignalRow), source: "supabase" };
+  const signals = rows
+    .map(mapTrendSignalRow)
+    .filter((signal) => mockModeEnabled() || !signal.isDemoData);
+
+  return { signals, source: "supabase" };
 }

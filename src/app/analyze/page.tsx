@@ -13,22 +13,22 @@ import type { AnalysisFormInputs, GenerateReportResponse } from "@/types";
 import { reportRequestHeaders } from "@/lib/report-api-client";
 
 const PRODUCT_TYPES = [
-  "Physical product (retail / wholesale)",
-  "Digital product / online course",
-  "Local service / restaurant / café",
   "E-commerce / Etsy / Shopify store",
-  "B2B service / consulting",
-  "Subscription / SaaS",
-  "Freelance / creative services",
-  "Real estate / property",
-  "Mobile app / software",
+  "Print-on-demand product",
+  "Digital download / template",
+  "Handmade physical product",
+  "Beauty / wellness product",
+  "Pet product",
+  "Home decor product",
+  "Giftable accessory",
+  "Baby / wedding / event product",
 ];
 
 const LOADING_STEPS = [
-  "Identifying market demand signals…",
-  "Profiling target customer segment…",
-  "Mapping competitive landscape…",
-  "Calculating pricing power…",
+  "Checking ecommerce demand signals…",
+  "Profiling likely online buyers…",
+  "Mapping Etsy and marketplace competition…",
+  "Assessing saturation risk…",
   "Assessing differentiation potential…",
   "Generating action plan…",
 ];
@@ -85,10 +85,10 @@ export default function AnalyzePage() {
       setForm((f) => ({ ...f, [field]: e.target.value }));
 
   function validate(): string | null {
-    if (!form.niche.trim()) return "Please describe your business idea or niche.";
+    if (!form.niche.trim()) return "Please describe your product keyword or niche.";
     if (!form.location.trim()) return "Please enter a location or target market.";
     if (!form.customer.trim()) return "Please describe your target customer.";
-    if (!form.productType) return "Please select a product or service type.";
+    if (!form.productType) return "Please select a product type.";
     return null;
   }
 
@@ -106,12 +106,12 @@ export default function AnalyzePage() {
     try {
       const payload = useMock
         ? {
-            niche: "Handmade Soy Candles",
-            location: "Tampa, FL",
-            customer: "Millennial women 25-38",
-            productType: "E-commerce / Etsy / Shopify store",
-            priceRange: "$26-$48",
-            competitors: "Yankee Candle, Bath & Body Works",
+            niche: "Pet Loss Memorial Candle",
+            location: "Online US buyers",
+            customer: "Pet owners buying sympathy gifts and personalized keepsakes",
+            productType: "Handmade physical product",
+            priceRange: "$18-$45",
+            competitors: "Etsy memorial candle shops, personalized sympathy gift listings",
             useMock: true
           }
         : { ...form, useMock: false };
@@ -214,9 +214,9 @@ export default function AnalyzePage() {
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="font-serif text-3xl sm:text-4xl text-slate-900 mb-3">New Market Analysis</h1>
+          <h1 className="font-serif text-3xl sm:text-4xl text-slate-900 mb-3">Analyze a Product Opportunity</h1>
           <p className="text-slate-500">
-            Fill in what you know — the more detail you provide, the sharper and more actionable your intelligence report will be.
+            Analyze whether this product is worth selling online, where it may be saturated, and how you could differentiate.
           </p>
         </div>
 
@@ -224,9 +224,9 @@ export default function AnalyzePage() {
         <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 mb-6 flex gap-3 text-sm">
           <span className="text-lg flex-shrink-0">📐</span>
           <div>
-            <p className="font-semibold text-brand-800 mb-1">How your score is calculated</p>
+            <p className="font-semibold text-brand-800 mb-1">What this analysis is for</p>
             <p className="text-brand-700 text-xs leading-relaxed">
-              We combine 5 econometric factors — Demand Strength, Competition Intensity (inverted), Pricing Power, Customer Pain Severity, and Differentiation Potential — each scored 0–20 — into a composite Market Opportunity Score (0–100).
+              Deep Analysis helps answer whether a product is emerging or saturated, who is already selling it, where differentiation is possible, and whether it deserves a watchlist slot.
             </p>
           </div>
         </div>
@@ -236,12 +236,12 @@ export default function AnalyzePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div className="sm:col-span-2">
               <Field
-                label="Business idea or niche *"
-                hint="Be specific: 'handmade soy candles' beats 'candles'"
+                label="Product keyword or niche *"
+                hint="Be specific: 'pet loss memorial candle' beats 'candles'"
               >
                 <input
                   className="input-base"
-                  placeholder="e.g. handmade soy candles, Korean BBQ restaurant, online fitness coaching"
+                  placeholder="e.g. pet loss memorial candle, bow phone charm, wedding newspaper template"
                   value={form.niche}
                   onChange={set("niche")}
                   maxLength={200}
@@ -249,10 +249,10 @@ export default function AnalyzePage() {
               </Field>
             </div>
 
-            <Field label="Location or target market *">
+            <Field label="Target market *">
               <input
                 className="input-base"
-                placeholder="e.g. Tampa, FL or Online US market"
+                placeholder="e.g. Online US buyers, Etsy US, Shopify DTC"
                 value={form.location}
                 onChange={set("location")}
                 maxLength={100}
@@ -269,7 +269,7 @@ export default function AnalyzePage() {
               />
             </Field>
 
-            <Field label="Product or service type *">
+            <Field label="Product type *">
               <select
                 className="input-base"
                 value={form.productType}
@@ -282,7 +282,7 @@ export default function AnalyzePage() {
               </select>
             </Field>
 
-            <Field label="Price range" optional hint="e.g. $15–$45/item or $80/hr">
+            <Field label="Price range" optional hint="e.g. $15-$45/item">
               <input
                 className="input-base"
                 placeholder="e.g. $15–$45 per item"
@@ -294,13 +294,13 @@ export default function AnalyzePage() {
 
             <div className="sm:col-span-2">
               <Field
-                label="Main competitors"
+                label="Known competing sellers or products"
                 optional
-                hint="Comma-separated list of brands or business names you know of"
+                hint="Comma-separated list of Etsy shops, Amazon products, brands, or marketplaces"
               >
                 <input
                   className="input-base"
-                  placeholder="e.g. Yankee Candle, Bath & Body Works, local boutiques"
+                  placeholder="e.g. Etsy shops, Amazon listings, Shopify brands"
                   value={form.competitors}
                   onChange={set("competitors")}
                   maxLength={300}
@@ -318,14 +318,14 @@ export default function AnalyzePage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
               </svg>
-              Generate Report
+	              Analyze Product
             </button>
             <button
               type="button"
               onClick={handleMockSubmit}
               className="btn-secondary flex-1 justify-center py-3.5 border-dashed text-slate-400 hover:text-slate-600"
             >
-              Use mock data (no API key needed)
+              Use demo report
             </button>
           </div>
 

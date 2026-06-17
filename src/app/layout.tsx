@@ -8,20 +8,20 @@ import "./globals.css";
 import "./platform.css";
 
 export const metadata: Metadata = {
-  title: "MarketLens — AI Market Intelligence",
+  title: "MarketLens - Ecommerce Product Trend Intelligence",
   description:
-    "Get a complete AI-powered market intelligence report for any business idea. Competitor analysis, pricing strategy, demand trends, and a step-by-step action plan in under 60 seconds.",
+    "Find ecommerce product trends before they go mainstream. Track acceleration, saturation, source confidence, and product opportunity signals for Etsy, Shopify, and POD sellers.",
   keywords: [
-    "market research",
-    "business intelligence",
-    "AI market analysis",
-    "competitor analysis",
-    "pricing strategy",
-    "small business tools",
+    "ecommerce trends",
+    "product research",
+    "Etsy trends",
+    "Shopify product ideas",
+    "print on demand trends",
+    "trend intelligence",
   ],
   openGraph: {
-    title: "MarketLens — AI Market Intelligence",
-    description: "Know your market before you commit.",
+    title: "MarketLens - Ecommerce Product Trend Intelligence",
+    description: "Find ecommerce product trends before they go mainstream.",
     type: "website",
   },
 };

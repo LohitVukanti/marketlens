@@ -11,6 +11,7 @@ export type TrendSignalRow = {
   velocity_score: number;
   acceleration_score: number;
   opportunity_score: number;
+  emergence_score?: number | null;
   confidence_score: number;
   reddit_mentions_last_7_days?: number | null;
   reddit_mentions_previous_7_days?: number | null;
@@ -24,6 +25,13 @@ export type TrendSignalRow = {
   etsy_confidence?: number | null;
   source_count?: number | null;
   source_confidence?: number | null;
+  google_growth_4w?: number | null;
+  google_growth_8w?: number | null;
+  etsy_saturation_score?: number | null;
+  data_quality?: TrendSignal["dataQuality"] | null;
+  is_demo_data?: boolean | null;
+  first_detected_at?: string | null;
+  trend_age_weeks?: number | null;
   score_explanation?: TrendSignal["scoreExplanation"] | null;
   why_trending?: string | null;
   source_type?: TrendSignal["sourceType"] | null;
@@ -64,6 +72,7 @@ export function mapTrendSignalRow(row: TrendSignalRow): TrendSignal {
     category: row.category,
     score: row.opportunity_score,
     opportunityScore: row.opportunity_score,
+    emergenceScore: row.emergence_score ?? row.opportunity_score,
     momentum: row.velocity_score,
     velocityScore: row.velocity_score,
     accelerationScore: row.acceleration_score,
@@ -82,6 +91,14 @@ export function mapTrendSignalRow(row: TrendSignalRow): TrendSignal {
     etsyConfidence: row.etsy_confidence ?? undefined,
     sourceCount: row.source_count ?? undefined,
     sourceConfidence: row.source_confidence ?? undefined,
+    googleGrowth4w: row.google_growth_4w ?? undefined,
+    googleGrowth8w: row.google_growth_8w ?? undefined,
+    etsySaturationScore: row.etsy_saturation_score ?? undefined,
+    dataQuality: row.data_quality ?? undefined,
+    isDemoData: row.is_demo_data ?? false,
+    firstDetectedAt: row.first_detected_at ?? row.detected_at ?? undefined,
+    lastUpdatedAt: row.updated_at ?? undefined,
+    trendAgeWeeks: row.trend_age_weeks ?? undefined,
     scoreExplanation: row.score_explanation ?? undefined,
     whyTrending: row.why_trending ?? undefined,
     sourceType: row.source_type ?? "discovered",

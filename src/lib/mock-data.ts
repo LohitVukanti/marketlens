@@ -7,98 +7,97 @@
 import type { ReportData, SavedReport } from "@/types";
 
 export const MOCK_REPORT_DATA: ReportData = {
-  marketScore: 74,
+  marketScore: 72,
 
   summary:
-    "The handmade soy candle market in Tampa, FL presents a strong opportunity for a well-positioned artisan brand. Consumer demand for natural, non-toxic home fragrance products has grown consistently since 2020, driven by wellness trends, 'nesting' behaviors, and rising distrust of synthetic ingredients in mass-market products. The Tampa Bay metro area's expanding millennial homeowner demographic represents an ideal primary buyer cohort.\n\nWhile national incumbents (Yankee Candle, Bath & Body Works) dominate shelf space, they are systematically weak on authenticity, local identity, and customization — the exact levers where an artisan brand can win. The Etsy marketplace shows fragmented competition locally, with no dominant Tampa-based candle brand occupying the top results. This is the white-space opportunity.\n\nA brand built around hyperlocal scent narratives ('Gulf Coast Morning', 'Ybor City Espresso'), premium soy-beeswax blends, and a subscription model can realistically capture $80K–$180K in Year 1 revenue with modest Etsy + farmers market + corporate gifting distribution. Margin structure is favorable at 68–74% gross margin on direct sales.",
+    "Pet loss memorial candles are a directional ecommerce opportunity for sellers who can combine sympathy gifting, personalization, and tasteful design. The product sits at the intersection of pet ownership, memorial keepsakes, and handmade home fragrance - a niche where buyers are often searching for something more thoughtful than a generic condolence gift.\n\nMarketplace competition exists, especially on Etsy, but many listings lean on similar paw-print artwork and generic sympathy copy. The opportunity is not simply to list another candle; it is to validate search demand, watch saturation, and differentiate through personalization, packaging, scent positioning, and emotional specificity.\n\nThis demo report uses sample data for product-analysis UX. It should be treated as a directional example, not verified sales or revenue intelligence.",
 
   targetCustomer:
-    "Primary: Millennial women aged 25–38, Tampa Bay metro, household income $55K–$110K. Homeowners or renters in Seminole Heights, South Tampa, Westchase, or Carrollwood. Heavily influenced by Instagram and TikTok for home décor discovery. Values small businesses, sustainability, and aesthetic intentionality. Buys candles for self-care rituals, home staging, and gifting. Average spend per order: $32–$58. High retention if brand voice resonates.\n\nSecondary: Corporate gifting coordinators at Tampa-area tech companies, law firms, and hospitality groups. Seek curated, locally-branded gift sets for employee appreciation and client onboarding. Order sizes: $300–$2,500. Seasonal concentration in Q4 and Q1.",
+    "Primary: Online buyers in the US purchasing a sympathy gift for a friend, family member, or coworker who recently lost a pet. They are likely browsing Etsy, Google, Pinterest, or gift guides with intent-driven phrases such as 'pet loss gift', 'dog memorial candle', or 'personalized pet sympathy gift'. They value tactful design, personalization, fast shipping, and reviews that signal the seller handles emotional orders carefully.\n\nSecondary: Pet owners buying a keepsake for themselves after loss. This buyer is more likely to care about customization, scent notes, packaging, and a product page that feels compassionate rather than gimmicky.",
 
   competitorPositioning:
-    "National players (Yankee Candle, Bath & Body Works) dominate on convenience and brand recognition but are structurally unable to offer local identity, customization, or craft narrative. They compete on volume and distribution, not authenticity. Local boutiques carry artisan candles as secondary SKUs with limited digital investment. The Etsy landscape in Tampa is fragmented — the top sellers are in other cities, creating an SEO and identity gap a local brand can fill with targeted optimization.",
+    "The main competitors are Etsy memorial gift shops, personalized candle sellers, sympathy gift bundles, and print-on-demand keepsake products. Many compete on personalization and fast fulfillment, but the category has repeated visual language: paw prints, rainbow bridge copy, simple pet names, and similar jar labels. A seller can stand out with more premium packaging, modern design systems, better scent storytelling, clearer gift-ready positioning, and product variants for dog, cat, and multi-pet households.",
 
   pricingRecommendation:
-    "Position at $26–$48 for standard 8oz candles — premium of 40–60% above mass market, justified by soy-beeswax blend and craft story. Offer a 4oz sampler at $14–$16 to lower the acquisition threshold. Bundle 3-pack at $65 (vs. $78 individual) signals value without discounting brand. Launch a monthly subscription box at $42/month (2 candles + exclusive scent) for recurring revenue. Corporate gift sets: $85–$180 with custom labeling. Avoid competing below $18 — it telegraphs commodity quality to your exact target buyer.",
+    "Test a core 8oz memorial candle at $24-$38 depending on vessel, label personalization, packaging, and shipping economics. Offer a lower-priced digital sympathy card or small add-on only if it improves bundle conversion without cheapening the gift. Keep personalization simple enough to fulfill reliably: pet name, short date range, and one optional message. Avoid competing purely on the lowest price; buyers in this category often pay for tact, care, and gift presentation.",
 
   customerPainPoints: [
-    "Synthetic fragrances and paraffin wax trigger headaches and respiratory sensitivity in health-conscious consumers who have no mass-market alternative",
-    "Candles feel impersonal — buyers seeking gifts or self-care want a brand with a real story and human maker, not a corporation",
-    "No prominent local Tampa candle brand exists for consumers who specifically seek to support local small businesses",
-    "Poor burn quality and tunneling waste money — premium buyers want a candle that performs consistently through its full burn life",
-    "Mass-market scents are trend-driven and generic — customers cannot find hyper-local, regional, or personalized scents",
-    "Corporate gift-givers struggle to find curated, locally-branded gift options at premium price points without dealing with large minimum orders",
+    "Sympathy gift buyers do not want a product that feels generic, loud, or emotionally clumsy",
+    "Personalized memorial products can feel repetitive because many listings use the same paw-print and rainbow-bridge visual language",
+    "Gift buyers need confidence that the item will ship quickly and arrive packaged appropriately",
+    "Pet owners may want something subtle enough to keep at home, not a novelty item",
+    "Buyers are unsure which scent, message, or design will feel respectful for the recipient",
+    "Sellers need to avoid over-saturated keywords while still matching high-intent search behavior",
   ],
 
   demandTrend:
-    "Upward trajectory. The US scented candle market grew from $3.4B in 2020 to an estimated $5.2B by 2026 (CAGR ~7.3%). Google Trends data for 'soy candles' and 'handmade candles' shows consistent YoY growth with Q4 spikes of 180–240% above baseline (November–December gift season). Etsy reported a 38% increase in candle-category searches from 2021 to 2023. Post-pandemic 'home nesting' behaviors have held above pre-2020 baseline. Florida specifically over-indexes on home fragrance relative to national averages due to climate (no fireplace culture → candles fill the ambiance gap year-round).",
+    "Directional demand is supported by durable pet ownership, continued interest in personalized gifts, and search behavior around pet memorial products. This demo does not include verified live Google Trends or Etsy API results. A real production decision should confirm 4-week and 8-week search acceleration, listing count, review velocity, and whether current search pages are dominated by established sellers.",
 
   differentiationStrategy:
-    "Lead with a 'Made in Tampa' identity — develop 5–8 signature scents tied to specific Tampa landmarks and experiences (Ybor City, Bayshore, Cigar City, Gulf sunsets). This emotional specificity is impossible for national brands to replicate. Invest in short-form video content showing the pour process — TikTok and Reels content of candle-making converts at 3–5x the rate of static posts. Launch a 'Candle of the Month Club' subscription in Month 3 to build predictable revenue. Develop a corporate gifting vertical targeting Tampa's tech, legal, and hospitality sectors for high-AOV B2B orders. Offer custom label printing for weddings and corporate events as a premium upsell.",
+    "Differentiate around taste, trust, and fulfillment clarity. Build a restrained design system with modern typography and soft colorways, then create variants for dog memorial, cat memorial, pet parent sympathy, and gift-ready bundles. Add clear personalization previews, short compassionate copy, scent guidance, and packaging photos. For Etsy SEO, target specific long-tail phrases rather than only broad 'pet memorial gift' terms.",
 
   marketingChannels: [
-    "TikTok & Instagram Reels — pour process videos, scent reveal content, behind-the-scenes; organic reach is exceptional in this category",
-    "Etsy SEO — optimize listings for 'Tampa candles', 'Florida soy candles', 'custom soy candle gift'; long-tail search is high-intent",
-    "Tampa farmers markets & pop-ups — Armature Works, Hyde Park Village, Ybor City Saturday Market for direct customer acquisition",
-    "Pinterest — home décor boards and gift guide pins drive significant long-tail traffic to Etsy and Shopify",
-    "Email list — capture via 15% discount popup; nurture with scent education and new drop announcements",
-    "Local press & micro-influencers — Tampa Bay Business Journal, Voyage Tampa, local lifestyle bloggers with 5K–50K followers",
-    "Corporate gifting outreach — direct LinkedIn and email prospecting to office managers at top 200 Tampa employers",
+    "Etsy SEO - build listings around long-tail phrases like 'personalized pet loss candle', 'dog memorial gift', and 'cat sympathy gift'",
+    "Pinterest - create gift guide pins for pet sympathy gifts, memorial keepsakes, and thoughtful condolence gifts",
+    "Google Shopping or search ads - test small budgets against high-intent memorial gift keywords",
+    "TikTok and Instagram Reels - show packing, label personalization, and tasteful product detail shots without exploiting grief",
+    "Email capture - collect interest from gift-guide traffic and follow up with related memorial keepsakes",
+    "Shopify product page SEO - publish collection pages for pet memorial gifts and personalized sympathy candles",
   ],
 
   risks: [
-    "Raw material cost volatility: soy wax and fragrance oils fluctuated 20–35% in 2022–2023; lock in supplier relationships early and consider price escalation clauses",
-    "Etsy algorithm dependency: a single algorithm change or fee increase can sharply reduce organic discovery — build owned channels (email, Shopify) from day one",
-    "Low barriers to entry: a competitor with more capital can copy the brand concept quickly — invest in brand identity and customer relationships as moats",
-    "Seasonal revenue concentration: Q4 may represent 40–55% of annual sales; manage cash flow and inventory accordingly",
-    "Production scaling bottleneck: handmade production is difficult to scale past ~300 units/month without hiring; plan staffing threshold before demand arrives",
-    "Shipping damage and fragrance fade in warm Florida climate can generate returns and negative reviews if packaging is not engineered for heat",
+    "Marketplace saturation could be higher than it appears if broad memorial keywords are dominated by sellers with deep review history",
+    "Emotional products require careful copy; overly promotional language can reduce trust",
+    "Personalization increases fulfillment complexity and error risk",
+    "Candles add shipping and breakage considerations that digital or POD products do not have",
+    "Demand may be steady rather than accelerating; verify trend movement before scaling inventory",
+    "Etsy dependency can limit control over acquisition costs and customer relationships",
   ],
 
   actionPlan: [
-    "Week 1–2: Register LLC, open business bank account, purchase initial supplies (NatureWax C-3, CandleScience fragrance oils, 8oz vessels). Budget: ~$800.",
-    "Week 2–3: Develop 5 signature scents, conduct burn tests, photograph final products professionally on clean white and lifestyle backgrounds.",
-    "Week 3–4: Open Etsy shop with 8–12 optimized listings. Set up Shopify store as owned channel. Write 'About' story centered on Tampa identity.",
-    "Month 1: Post 3x/week on TikTok and Instagram (pour videos, scent reveals, packaging ASMR). Apply to 2 Tampa farmers markets for Month 2.",
-    "Month 2: Launch email list with 15% first-order discount. Begin corporate gifting outreach to 20 local businesses. Target first $5K revenue month.",
-    "Month 3+: Introduce subscription box ('Tampa Candle Club'). Hire part-time production assistant. Evaluate wholesale to 3–5 local boutiques.",
+    "Week 1-2: Validate the search page manually across Etsy, Google, and Pinterest; record listing counts, top seller review depth, price ranges, and repeated design patterns.",
+    "Week 2-3: Build 3 visual directions and 2 personalization formats; test them with a small audience before creating inventory.",
+    "Week 3-4: Launch a narrow Etsy test with 4-6 listings targeting specific long-tail keywords and measure favorites, clicks, and conversion signals.",
+    "Month 1: Add packaging photos, personalization examples, and delivery timing to reduce buyer uncertainty.",
+    "Month 2: Expand only the variants that show engagement; avoid adding broad memorial products without search evidence.",
+    "Month 3+: Move proven listings into a Shopify collection and build owned email capture around memorial gift guides.",
   ],
 
   competitorTable: [
     {
-      name: "Yankee Candle",
-      positioning: "Heritage mass-market brand, widest retail distribution",
-      estimatedPriceRange: "$14–$32",
-      strength: "Massive brand recognition, retail footprint in every mall",
-      weakness: "Paraffin-based, no local identity, impersonal, trend-lagging",
+      name: "Etsy personalized memorial candle shops",
+      positioning: "Handmade and semi-custom sympathy candles built around pet names, dates, and memorial copy",
+      estimatedPriceRange: "$18-$45",
+      strength: "Strong fit with high-intent Etsy searches and gift-ready buying behavior",
+      weakness: "Visual differentiation is often weak because many listings use similar paw-print motifs",
     },
     {
-      name: "Bath & Body Works",
-      positioning: "Trend-driven, high-velocity seasonal drops",
-      estimatedPriceRange: "$9–$27",
-      strength: "Marketing machine, loyalty program, frequent new launches",
-      weakness: "Synthetic fragrance, no craft story, feels disposable",
+      name: "Personalized sympathy gift bundles",
+      positioning: "Gift boxes pairing candles with cards, frames, ornaments, or keepsakes",
+      estimatedPriceRange: "$28-$85",
+      strength: "Higher perceived gift value and easier gifting experience",
+      weakness: "More complex fulfillment and higher price sensitivity",
     },
     {
-      name: "Local Etsy Sellers (Tampa area)",
-      positioning: "Artisan, small-batch, variable quality",
-      estimatedPriceRange: "$14–$55",
-      strength: "Authenticity, niche scents, personal connection",
-      weakness: "Inconsistent branding, low SEO investment, no local identity anchor",
+      name: "Print-on-demand memorial keepsakes",
+      positioning: "Mugs, ornaments, frames, and blankets customized with pet names or photos",
+      estimatedPriceRange: "$12-$60",
+      strength: "Broad product variety and lower operational complexity for sellers",
+      weakness: "Can feel less premium or less intimate than a carefully packaged handmade product",
     },
     {
-      name: "Tampa Boutique Resellers",
-      positioning: "Curated gift retail, aesthetic-driven curation",
-      estimatedPriceRange: "$28–$65",
-      strength: "Local credibility, foot traffic, gift occasion capture",
-      weakness: "Limited online reach, low inventory turns, no direct-to-consumer",
+      name: "Amazon sympathy candles",
+      positioning: "Fast-shipping generic sympathy candles and memorial gifts",
+      estimatedPriceRange: "$14-$35",
+      strength: "Convenience, reviews, and Prime shipping",
+      weakness: "Limited personalization and weaker emotional brand experience",
     },
     {
-      name: "DW Home / Target Private Label",
-      positioning: "Affordable aesthetic, mass retail accessible",
-      estimatedPriceRange: "$8–$22",
-      strength: "Price point, availability, design-forward packaging",
-      weakness: "No craft story, paraffin-based, undifferentiated from private label",
+      name: "Digital sympathy card templates",
+      positioning: "Low-priced downloadable cards and printable memorial templates",
+      estimatedPriceRange: "$3-$15",
+      strength: "Instant delivery and low price",
+      weakness: "Lower perceived gift weight and no physical keepsake unless paired with another item",
     },
   ],
 
@@ -106,28 +105,28 @@ export const MOCK_REPORT_DATA: ReportData = {
     opportunityFactors: [
       {
         label: "Demand Strength",
-        value: 16,
-        description: "Strong and growing consumer demand for natural home fragrance, validated by market size data and search trend growth.",
+        value: 15,
+        description: "Directional demand exists around pet memorial gifts, but live trend acceleration should be verified before scaling.",
       },
       {
         label: "Competition (inverted)",
-        value: 12,
-        description: "National competition is intense, but the artisan-local niche has meaningful white space with no dominant Tampa brand.",
+        value: 13,
+        description: "Competition is present, but there is room for more tasteful design and sharper long-tail positioning.",
       },
       {
         label: "Pricing Power",
-        value: 15,
-        description: "High perceived value of craft and natural ingredients supports premium pricing 40–60% above mass market.",
+        value: 14,
+        description: "Personalized sympathy gifts can support premium pricing when packaging and trust signals are strong.",
       },
       {
         label: "Pain Severity",
-        value: 17,
-        description: "Health concerns around synthetic candles and demand for local identity create genuine, unmet pain points.",
+        value: 16,
+        description: "Gift buyers need a respectful, thoughtful option for a sensitive moment.",
       },
       {
         label: "Differentiation Potential",
         value: 14,
-        description: "Hyperlocal scent narrative, subscription model, and corporate gifting provide multiple defensible differentiation vectors.",
+        description: "Design, personalization, packaging, and keyword focus create practical ways to stand apart.",
       },
     ],
   },
@@ -137,12 +136,12 @@ export const MOCK_REPORT_DATA: ReportData = {
 export const MOCK_SAVED_REPORT: SavedReport = {
   id: "mock-report-001",
   created_at: new Date().toISOString(),
-  niche: "Handmade Soy Candles",
-  location: "Tampa, FL",
-  target_customer: "Millennial women 25–38, home décor and wellness focused",
-  product_type: "E-commerce / Etsy / Shopify",
-  price_range: "$26–$48 per candle",
-  competitors_input: "Yankee Candle, Bath & Body Works, local boutiques",
+  niche: "Pet Loss Memorial Candle",
+  location: "Online US buyers",
+  target_customer: "Pet owners and sympathy gift buyers",
+  product_type: "Handmade physical product",
+  price_range: "$18-$45 per candle",
+  competitors_input: "Etsy memorial candle shops, Amazon sympathy candles, POD keepsakes",
   report_data: MOCK_REPORT_DATA,
   is_mock: true,
 };

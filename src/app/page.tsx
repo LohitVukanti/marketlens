@@ -7,26 +7,26 @@ import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
 
 const USE_CASES = [
-  { icon: "🛍️", title: "Etsy & Shopify Sellers", desc: "Find white-space opportunities before launching your store." },
-  { icon: "🍕", title: "Restaurant Owners", desc: "Understand local competition and optimal pricing for your cuisine." },
-  { icon: "📦", title: "Product Entrepreneurs", desc: "Validate demand and identify differentiation before spending a dollar." },
-  { icon: "💼", title: "Small Businesses", desc: "Get data-backed strategies you'd normally pay a consultant $5K for." },
-  { icon: "🎓", title: "Students & Researchers", desc: "Real market data analysis for case studies and entrepreneurship courses." },
-  { icon: "🏠", title: "Local Service Providers", desc: "Price competitively and market smarter in your specific city and neighborhood." },
+  { icon: "🛍️", title: "Etsy Sellers", desc: "Find accelerating product keywords before listings become saturated." },
+  { icon: "📦", title: "Shopify Operators", desc: "Compare demand growth, Reddit velocity, and Etsy saturation before sourcing." },
+  { icon: "🎨", title: "Print-on-Demand Sellers", desc: "Spot niche product themes with rising interest and room for differentiation." },
+  { icon: "💻", title: "Digital Product Creators", desc: "Track templates, planners, and downloadable products by emergence signals." },
+  { icon: "🎁", title: "Giftable Product Sellers", desc: "Watch early gifting trends while competition is still fragmented." },
+  { icon: "🔎", title: "Product Researchers", desc: "Separate verified signals from weak or demo evidence before acting." },
 ];
 
 const HOW_IT_WORKS = [
-  { num: "01", title: "Describe your idea", desc: "Enter your niche, location, target customers, and known competitors." },
-  { num: "02", title: "AI analyzes the market", desc: "Our model scores demand strength, competition, pricing power, pain severity, and differentiation." },
-  { num: "03", title: "Get your full report", desc: "A complete dashboard with charts, competitor table, pricing strategy, and a clear action plan." },
-  { num: "04", title: "Execute with confidence", desc: "Save, export, and revisit reports as your strategy evolves." },
+  { num: "01", title: "Scan product signals", desc: "Browse ecommerce products ranked by acceleration, growth, saturation, and source confidence." },
+  { num: "02", title: "Check the evidence", desc: "Review Google Trends growth, Reddit velocity, Etsy competition, and confidence labels." },
+  { num: "03", title: "Analyze a candidate", desc: "Run Deep Analysis to decide whether the product is worth selling online." },
+  { num: "04", title: "Watch before saturation", desc: "Track promising products and revisit saved analysis as more evidence arrives." },
 ];
 
 const STATS = [
-  { n: "10+", label: "Intelligence Metrics" },
-  { n: "< 60s", label: "Report Generation" },
-  { n: "5-Factor", label: "Scoring Model" },
-  { n: "Free", label: "MVP Access" },
+  { n: "5-Part", label: "Emergence Score" },
+  { n: "4w/8w", label: "Growth Windows" },
+  { n: "3", label: "Source Families" },
+  { n: "Clear", label: "Data Quality" },
 ];
 
 const PLATFORM_LINKS = [
@@ -34,21 +34,21 @@ const PLATFORM_LINKS = [
     href: "/feed",
     icon: "◈",
     title: "Trend Feed",
-    desc: "Browse live ecommerce opportunity signals ranked by our 5-factor scoring model.",
+    desc: "Browse ecommerce product signals ranked by acceleration, source confidence, and saturation.",
     badge: "Live",
   },
   {
     href: "/watchlist",
     icon: "☆",
     title: "Watchlist",
-    desc: "Track niches you care about and spot score changes before everyone else.",
+    desc: "Track product keywords you care about and monitor acceleration before saturation.",
     badge: null,
   },
   {
     href: "/briefing",
     icon: "◎",
     title: "Daily Briefing",
-    desc: "Get a morning intelligence summary: top movers, alerts, and one deep-dive pick.",
+    desc: "Get a morning summary of product movers, weak signals, and watchlist alerts.",
     badge: "New",
   },
 ];
@@ -73,21 +73,21 @@ export default function LandingPage() {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-20 pb-16 text-center">
             <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-700 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider mb-8 border border-brand-100">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse-dot" />
-              AI-Powered Market Intelligence
+              Exploding Topics for Ecommerce Products
             </div>
 
             <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl text-slate-900 mb-6 leading-[1.1]">
-              Know your market<br />
-              <em className="gradient-text not-italic">before you commit</em>
+              Find ecommerce product trends<br />
+              <em className="gradient-text not-italic">before they go mainstream</em>
             </h1>
 
             <p className="text-lg text-slate-500 mb-10 max-w-xl mx-auto leading-relaxed">
-              Get a complete market intelligence report for any business idea — competitor analysis, pricing strategy, demand trends, and a step-by-step action plan — in under 60 seconds.
+              MarketLens helps Etsy, Shopify, and print-on-demand sellers discover emerging product opportunities using acceleration, Reddit velocity, Etsy saturation, and confidence labels.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
               <Link href="/analyze" className="btn-primary text-base px-8 py-4 shadow-lg">
-                Generate Free Report →
+                Analyze a Product →
               </Link>
               <Link href="/analyze?mock=true" className="btn-secondary text-base px-6 py-4">
                 See Example Report
@@ -112,7 +112,7 @@ export default function LandingPage() {
             </div>
 
             <p className="text-xs text-slate-400">
-              No account required · Works without API key in demo mode
+              Demo data is labeled · Real signals require source collection
             </p>
           </div>
 
@@ -129,10 +129,10 @@ export default function LandingPage() {
               </div>
               <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label: "Market Score", value: "74/100", color: "text-emerald-600" },
-                  { label: "Competitors", value: "5 mapped", color: "text-brand-700" },
-                  { label: "Action Steps", value: "6 steps", color: "text-violet-600" },
-                  { label: "Pain Points", value: "6 found", color: "text-amber-600" },
+                  { label: "Emergence Score", value: "74/100", color: "text-emerald-600" },
+                  { label: "4w Growth", value: "+38%", color: "text-brand-700" },
+                  { label: "Etsy Saturation", value: "Low", color: "text-violet-600" },
+                  { label: "Data Quality", value: "Emerging", color: "text-amber-600" },
                 ].map(item => (
                   <div key={item.label} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                     <p className="text-xs text-slate-400 mb-1">{item.label}</p>
@@ -144,11 +144,11 @@ export default function LandingPage() {
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                   <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Score Breakdown</p>
                   {[
-                    { label: "Demand Strength", w: "80%", color: "bg-brand-500" },
-                    { label: "Pricing Power", w: "75%", color: "bg-violet-500" },
-                    { label: "Pain Severity", w: "85%", color: "bg-emerald-500" },
-                    { label: "Differentiation", w: "70%", color: "bg-amber-500" },
-                    { label: "Competition (inv.)", w: "60%", color: "bg-blue-500" },
+	                    { label: "Acceleration", w: "80%", color: "bg-brand-500" },
+	                    { label: "4w Growth", w: "75%", color: "bg-violet-500" },
+	                    { label: "Reddit Velocity", w: "65%", color: "bg-emerald-500" },
+	                    { label: "Saturation Inverse", w: "70%", color: "bg-amber-500" },
+	                    { label: "Source Confidence", w: "60%", color: "bg-blue-500" },
                   ].map(b => (
                     <div key={b.label} className="flex items-center gap-3 mb-2">
                       <span className="text-xs text-slate-500 w-36 flex-shrink-0">{b.label}</span>
@@ -168,10 +168,10 @@ export default function LandingPage() {
           <div className="max-w-5xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-10">
               <h2 className="font-serif text-3xl sm:text-4xl text-slate-900 mb-3">
-                Explore the intelligence platform
+	                Explore the ecommerce trend platform
               </h2>
               <p className="text-slate-500 max-w-xl mx-auto">
-                Check trends daily, track your niches, and read your morning briefing — no report required.
+	                Check product acceleration, track promising keywords, and verify evidence before selling.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -218,8 +218,8 @@ export default function LandingPage() {
         <section className="py-20 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-12">
-              <h2 className="font-serif text-3xl sm:text-4xl text-slate-900 mb-4">Built for entrepreneurs like you</h2>
-              <p className="text-slate-500 max-w-lg mx-auto">Whether you're validating your first idea or expanding your existing business, MarketLens gives you the intelligence to move fast and move smart.</p>
+              <h2 className="font-serif text-3xl sm:text-4xl text-slate-900 mb-4">Built for ecommerce sellers</h2>
+              <p className="text-slate-500 max-w-lg mx-auto">Use MarketLens to find early product signals, avoid saturated niches, and decide what deserves deeper research.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {USE_CASES.map(uc => (
@@ -238,7 +238,7 @@ export default function LandingPage() {
           <div className="max-w-4xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-12">
               <h2 className="font-serif text-3xl sm:text-4xl text-slate-900 mb-4">How it works</h2>
-              <p className="text-slate-500 max-w-md mx-auto">Four simple steps from idea to full market intelligence report.</p>
+              <p className="text-slate-500 max-w-md mx-auto">Four simple steps from signal discovery to product validation.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {HOW_IT_WORKS.map((step, i) => (
@@ -263,13 +263,13 @@ export default function LandingPage() {
         <section className="py-20 bg-white">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
             <h2 className="font-serif text-3xl sm:text-4xl text-slate-900 mb-4">
-              Ready to find your market edge?
+	              Ready to find your next product signal?
             </h2>
             <p className="text-slate-500 mb-8">
-              Generate your first market intelligence report in under a minute. No account required.
+	              Start with the Trend Feed, then analyze products that show credible early acceleration.
             </p>
             <Link href="/analyze" className="btn-primary text-base px-10 py-4 shadow-lg mx-auto">
-              Start Your Free Analysis →
+	              Start Product Analysis →
             </Link>
           </div>
         </section>
@@ -277,7 +277,7 @@ export default function LandingPage() {
         {/* ── Footer ────────────────────────────────────────── */}
         <footer className="border-t border-slate-100 py-8 bg-white">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
-            <p>© {new Date().getFullYear()} MarketLens · AI-Powered Market Intelligence</p>
+            <p>© {new Date().getFullYear()} MarketLens · Ecommerce Trend Intelligence</p>
             <p>Built with Next.js · Tailwind · OpenAI · Supabase</p>
           </div>
         </footer>

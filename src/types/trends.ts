@@ -6,6 +6,7 @@
 export type TrendDirection = "rising" | "falling" | "stable" | "breakout";
 export type TrendState = "emerging" | "rising" | "breakout" | "cooling" | "saturated";
 export type TrendSourceType = "discovered" | "from_analysis";
+export type DataQuality = "verified" | "emerging" | "needs_confirmation" | "demo";
 export type TrendCategory =
   | "home-decor" | "apparel" | "beauty" | "food-beverage"
   | "digital-products" | "pets" | "fitness" | "jewelry"
@@ -18,6 +19,7 @@ export interface TrendSignal {
   niche: string;
   category: TrendCategory;
   score: number;
+  emergenceScore?: number;
   opportunityScore?: number;
   momentum: number;
   velocityScore?: number;
@@ -37,6 +39,14 @@ export interface TrendSignal {
   etsyConfidence?: number;
   sourceCount?: number;
   sourceConfidence?: number;
+  googleGrowth4w?: number;
+  googleGrowth8w?: number;
+  etsySaturationScore?: number;
+  dataQuality?: DataQuality;
+  isDemoData?: boolean;
+  firstDetectedAt?: string;
+  lastUpdatedAt?: string;
+  trendAgeWeeks?: number;
   scoreExplanation?: {
     formula?: string;
     google?: Record<string, unknown>;

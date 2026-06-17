@@ -22,12 +22,12 @@ const supabase = createClient(supabaseUrl, serviceKey);
 
 const SEED_REPORTS = [
   {
-    niche: "Handmade Soy Candles",
-    location: "Tampa, FL",
-    target_customer: "Millennial women 25-38, home décor and wellness focused",
-    product_type: "E-commerce / Etsy / Shopify store",
-    price_range: "$26-$48 per candle",
-    competitors_input: "Yankee Candle, Bath & Body Works, local boutiques",
+    niche: "Pet Loss Memorial Candle",
+    location: "Online US buyers",
+    target_customer: "Pet owners and sympathy gift buyers",
+    product_type: "Handmade physical product",
+    price_range: "$18-$45 per candle",
+    competitors_input: "Etsy memorial candle shops, Amazon sympathy candles, POD keepsakes",
     report_data: MOCK_REPORT_DATA,
     is_mock: true,
   },

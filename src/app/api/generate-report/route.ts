@@ -95,7 +95,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRepor
           {
             role: "system",
             content:
-              "You are a senior market intelligence analyst. Return only valid JSON matching the user's requested schema.",
+              "You are a senior ecommerce product trend analyst. Return only valid JSON matching the user's requested schema.",
           },
           { role: "user", content: prompt },
         ],

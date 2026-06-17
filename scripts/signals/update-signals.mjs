@@ -5,15 +5,30 @@ import { randomUUID } from "node:crypto";
 
 dotenv.config({ path: ".env.local" });
 
-const PRODUCTS = [
-  ["mushroom lamp", "Ambient Lighting / Home Decor", "home-decor", "$28-$65", "low", ["cottagecore", "aesthetic", "lighting"]],
-  ["crochet cup holder", "Drinkware Accessories", "apparel", "$12-$35", "low", ["crochet", "accessories", "giftable"]],
-  ["custom pet portrait", "Digital Art / Pet Products", "pets", "$15-$45", "medium", ["pets", "personalized", "digital download"]],
-  ["suncatcher window hanging", "Home Decor / Crystal", "home-decor", "$18-$55", "low", ["crystals", "rainbow", "decor"]],
-  ["digital planner goodnotes", "Digital Products / Stationery", "digital-products", "$8-$24", "medium", ["planner", "GoodNotes", "digital"]],
-  ["sourdough starter kit", "Food & Beverage / Kitchen", "food-beverage", "$18-$42", "medium", ["sourdough", "baking", "DIY"]],
-  ["fitness tracker spreadsheet", "Digital Products / Fitness", "fitness", "$5-$19", "low", ["fitness", "spreadsheet", "tracker"]],
-  ["notion ai template", "Digital Products / Productivity", "digital-products", "$9-$37", "high", ["notion", "AI", "productivity"]],
+const VALID_CATEGORIES = new Set([
+  "home-decor",
+  "apparel",
+  "beauty",
+  "food-beverage",
+  "digital-products",
+  "pets",
+  "fitness",
+  "jewelry",
+  "art-crafts",
+  "tech-accessories",
+  "outdoor",
+  "kids",
+]);
+
+let PRODUCTS = [
+  ["bow phone charm", "Accessories / Phone Charms", "home-decor", "$8-$22", "low", ["coquette", "phone charm", "giftable"]],
+  ["pickleball bag charm", "Sports Accessories / Gifts", "apparel", "$10-$28", "low", ["pickleball", "bag charm", "personalized"]],
+  ["pet loss memorial candle", "Pet Memorial / Home Fragrance", "pets", "$18-$45", "medium", ["pet memorial", "sympathy gift", "candle"]],
+  ["wedding newspaper program", "Wedding Stationery / Templates", "digital-products", "$9-$29", "low", ["wedding", "newspaper", "template"]],
+  ["notion second brain template", "Digital Products / Productivity", "digital-products", "$12-$49", "medium", ["notion", "productivity", "template"]],
+  ["baby name sign acrylic", "Baby / Nursery Decor", "kids", "$18-$58", "low", ["baby", "nursery", "personalized"]],
+  ["pilates grip socks bow", "Fitness Accessories / Apparel", "apparel", "$12-$26", "low", ["pilates", "grip socks", "coquette"]],
+  ["canva brand kit template", "Digital Products / Shopify Branding", "digital-products", "$15-$59", "medium", ["canva", "branding", "shopify"]],
 ].map(([keyword, niche, category, avgPrice, competitionLevel, tags], index) => ({
   keyword,
   niche,
@@ -60,8 +75,8 @@ function seededRand(seed) {
 }
 
 function fallbackSeries(seed) {
-  const base = 18 + seededRand(seed) * 42;
-  const slope = -2 + seededRand(seed + 7) * 12;
+  const base = 8 + seededRand(seed) * 24;
+  const slope = 1 + seededRand(seed + 7) * 8;
   return Array.from({ length: 12 }, (_, index) => {
     const noise = (seededRand(seed + index * 3) - 0.45) * 14;
     return clamp(base + index * slope + noise, 1, 100);
@@ -83,6 +98,56 @@ function titleCase(value) {
 
 function rowId(keyword) {
   return keyword.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function normalizeCandidateKeyword(row, index) {
+  const evidence = row.evidence && typeof row.evidence === "object" ? row.evidence : {};
+  const keyword = String(row.keyword || "").trim().toLowerCase();
+  const category = VALID_CATEGORIES.has(row.category) ? row.category : "digital-products";
+  const tags = Array.isArray(evidence.tags)
+    ? evidence.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 5)
+    : ["candidate", row.source || "verified"];
+
+  if (!keyword) return null;
+
+  return {
+    keyword,
+    niche: String(evidence.niche || titleCase(keyword)),
+    category,
+    avgPrice: String(evidence.avgPrice || evidence.avg_price || "n/a"),
+    competitionLevel: ["low", "medium", "high"].includes(evidence.competitionLevel)
+      ? evidence.competitionLevel
+      : ["low", "medium", "high"].includes(evidence.competition_level)
+        ? evidence.competition_level
+        : "medium",
+    tags,
+    seed: 100 + index,
+  };
+}
+
+async function loadVerifiedCandidateProducts(supabase) {
+  const { data, error } = await supabase
+    .from("candidate_keywords")
+    .select("keyword, category, source, evidence")
+    .eq("status", "verified")
+    .limit(50);
+
+  if (error) {
+    console.warn(`Candidate keyword expansion skipped: ${error.message}`);
+    return [];
+  }
+
+  return (data || [])
+    .map((row, index) => normalizeCandidateKeyword(row, index))
+    .filter(Boolean);
+}
+
+function mergeProducts(curated, candidates) {
+  const byKeyword = new Map(curated.map((product) => [product.keyword, product]));
+  for (const candidate of candidates) {
+    if (!byKeyword.has(candidate.keyword)) byKeyword.set(candidate.keyword, candidate);
+  }
+  return Array.from(byKeyword.values());
 }
 
 function percentChange(current, previous) {
@@ -137,19 +202,27 @@ function confidenceFor(values, googleSource, reddit, etsy, sourceAgreement) {
 }
 
 function scoreFor({ current, velocity, acceleration, redditGrowthRate, etsyCompetitionLevel, etsyListingCount, sourceAgreement }) {
-  const googleVelocityScore = clamp(50 + velocity * 2);
   const googleAccelerationScore = clamp(50 + acceleration * 2.4);
+  const googleGrowthScore = clamp(50 + velocity * 2);
   const redditGrowthScore = clamp(50 + redditGrowthRate * 0.35);
   const etsySaturationScore = competitionScore(etsyCompetitionLevel, etsyListingCount);
+  const flatDemandPenalty = current >= 70 && Math.abs(velocity) < 7 ? 18 : 0;
 
   return clamp(
-    current * 0.24 +
-      googleVelocityScore * 0.22 +
-      googleAccelerationScore * 0.13 +
-      redditGrowthScore * 0.16 +
-      etsySaturationScore * 0.15 +
-      sourceAgreement * 0.10
+    googleAccelerationScore * 0.30 +
+      googleGrowthScore * 0.20 +
+      redditGrowthScore * 0.15 +
+      etsySaturationScore * 0.20 +
+      sourceAgreement * 0.15 -
+      flatDemandPenalty
   );
+}
+
+function dataQuality({ signalSource, sourceCount, confidence }) {
+  if (signalSource === "fallback_seed") return "demo";
+  if (confidence < 45 || sourceCount < 2) return "needs_confirmation";
+  if (confidence >= 72 && sourceCount >= 2) return "verified";
+  return "emerging";
 }
 
 function fallbackReddit(product) {
@@ -333,7 +406,7 @@ function collectGoogleTrends() {
 function buildExplanation({ current, baseline, velocity, acceleration, reddit, etsy, sourceAgreement, opportunity }) {
   return {
     formula:
-      "24% current search interest, 22% Google velocity, 13% Google acceleration, 16% Reddit growth, 15% Etsy saturation, 10% source agreement",
+      "30% Google acceleration, 20% Google 4-week growth, 15% Reddit mention growth, 20% Etsy saturation inverse, 15% source agreement/confidence",
     google: {
       current,
       baseline,
@@ -384,16 +457,19 @@ function buildRows(series, source, redditResults, etsyResults) {
     const signalSource = found?.source || source;
     const reddit = redditResults.get(product.keyword) || fallbackReddit(product);
     const etsy = etsyResults.get(product.keyword) || fallbackEtsy(product);
-    const recent = values.slice(-3);
-    const previous = values.slice(-6, -3);
+    const recent = values.slice(-4);
+    const previous = values.slice(-8, -4);
     const current = clamp(avg(recent));
-    const baseline = clamp(avg(values.slice(0, Math.max(values.length - 3, 1))));
+    const baseline = clamp(avg(values.slice(0, Math.max(values.length - 4, 1))));
     const velocity = clamp(current - baseline, -100, 100);
     const acceleration = clamp(avg(recent) - avg(previous), -100, 100);
+    const googleGrowth4w = percentChange(avg(values.slice(-4)), avg(values.slice(-8, -4)));
+    const googleGrowth8w = percentChange(avg(values.slice(-4)), avg(values.slice(-12, -8)));
     const trendState = stateFor(current, velocity, acceleration, baseline);
     const sourceAgreement = sourceAgreementScore(velocity, acceleration, reddit.growthRate, etsy.estimatedCompetitionLevel);
     const sourceCount = sourceCountFor(reddit, etsy, signalSource);
     const conf = confidenceFor(values, signalSource, reddit, etsy, sourceAgreement);
+    const quality = dataQuality({ signalSource, sourceCount, confidence: conf });
     const opportunity = scoreFor({
       current,
       velocity,
@@ -427,7 +503,15 @@ function buildRows(series, source, redditResults, etsyResults) {
       velocity_score: velocity,
       acceleration_score: acceleration,
       opportunity_score: opportunity,
+      emergence_score: opportunity,
       confidence_score: conf,
+      google_growth_4w: googleGrowth4w,
+      google_growth_8w: googleGrowth8w,
+      etsy_saturation_score: competitionScore(etsy.estimatedCompetitionLevel, etsy.listingCount),
+      data_quality: quality,
+      is_demo_data: signalSource === "fallback_seed" || reddit.source === "fallback_estimate" || etsy.source === "fallback_estimate",
+      first_detected_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7 * (product.seed - 10)).toISOString(),
+      trend_age_weeks: product.seed - 10,
       trend_state: trendState,
       summary,
       tags: product.tags,
@@ -474,6 +558,14 @@ function stripEnrichmentColumns(rows) {
     "etsy_confidence",
     "source_count",
     "source_confidence",
+    "emergence_score",
+    "google_growth_4w",
+    "google_growth_8w",
+    "etsy_saturation_score",
+    "data_quality",
+    "is_demo_data",
+    "first_detected_at",
+    "trend_age_weeks",
     "score_explanation",
     "why_trending",
   ]);
@@ -484,7 +576,7 @@ function stripEnrichmentColumns(rows) {
 }
 
 function isMissingEnrichmentColumn(error) {
-  return /column .* (reddit_|etsy_|source_|score_explanation|why_trending)/i.test(error.message);
+  return /column .* (reddit_|etsy_|source_|emergence_score|google_growth_|data_quality|is_demo_data|first_detected_at|trend_age_weeks|score_explanation|why_trending)/i.test(error.message);
 }
 
 async function main() {
@@ -507,6 +599,9 @@ async function main() {
     status: "running",
     started_at: new Date().toISOString(),
   });
+
+  const candidateProducts = await loadVerifiedCandidateProducts(supabase);
+  PRODUCTS = mergeProducts(PRODUCTS, candidateProducts);
 
   const trends = collectGoogleTrends();
   const usingGoogle = trends.ok && trends.series?.some((item) => item.values?.length);
@@ -572,6 +667,7 @@ async function main() {
   }).eq("id", jobId);
 
   console.log(`Updated ${rows.length} trend signals with Google, Reddit, and Etsy scoring.`);
+  console.log(`Candidate keywords: ${candidateProducts.length} verified additions loaded.`);
   console.log(`Google source: ${usingGoogle ? "Google Trends" : "fallback seed data"}.`);
   console.log(`Reddit source: ${redditErrors.length ? "public JSON with fallbacks" : "public JSON"}.`);
   console.log(`Etsy source: ${process.env.ETSY_API_KEY ? "official Etsy API" : "fallback estimates"}.`);
