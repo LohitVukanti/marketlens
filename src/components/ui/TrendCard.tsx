@@ -95,7 +95,7 @@ export default function TrendCard({
   return (
     <div className="card-hover rounded-2xl p-5 animate-in flex flex-col gap-4">
       {/* Row 1: icon + name + score + sparkline */}
-      <div className="flex items-start gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
           style={{ background: "var(--bg-hover)" }}>
           {CATEGORY_ICONS[signal.category] || "📊"}
@@ -114,7 +114,7 @@ export default function TrendCard({
           </p>
         </div>
         {/* Score + sparkline */}
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex items-center justify-between gap-4 flex-shrink-0 sm:justify-start">
           <Sparkline data={signal.sparkline} />
           <div className="text-right">
             <div className="text-2xl font-bold mono" style={{ color: scoreColor }}>{displayScore}</div>
@@ -206,7 +206,7 @@ export default function TrendCard({
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 pt-1 border-t" style={{ borderColor: "var(--border)" }}>
+      <div className="flex flex-col gap-2 pt-1 border-t sm:flex-row" style={{ borderColor: "var(--border)" }}>
         <button onClick={() => onWatch?.(signal)}
           disabled={isUpdating}
           className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-all ${
@@ -223,7 +223,7 @@ export default function TrendCard({
               ? `/dashboard?report=${encodeURIComponent(signal.reportId)}`
               : `/analyze?niche=${encodeURIComponent(signal.keyword || signal.name)}`
           }
-          className="btn-primary text-xs px-4 py-2"
+          className="btn-primary justify-center text-xs px-4 py-2"
         >
           {signal.reportId ? "Open Analysis" : "Run Deep Analysis"}
         </Link>
@@ -231,7 +231,7 @@ export default function TrendCard({
           <button
             onClick={() => onDelete?.(signal)}
             disabled={isDeleting}
-            className="btn-ghost text-xs border border-red-500/20 px-3 py-2"
+            className="btn-ghost justify-center text-xs border border-red-500/20 px-3 py-2"
             style={{ color: "#f87171" }}
           >
             {isDeleting ? "Removing..." : "Remove"}

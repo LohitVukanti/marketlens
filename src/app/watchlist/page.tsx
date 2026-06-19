@@ -50,7 +50,7 @@ function WatchRow({
 
   return (
     <div className="card p-4 space-y-4 hover:border-white/10 transition-all">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <div
           className="w-9 h-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
           style={{ background: "var(--bg-hover)" }}
@@ -65,7 +65,7 @@ function WatchRow({
             {CATEGORY_LABELS[signal.category]} · {signal.niche}
           </p>
         </div>
-        <div className="text-right flex-shrink-0 w-16">
+        <div className="text-left flex-shrink-0 sm:w-16 sm:text-right">
           <p className="text-xl font-bold mono" style={{ color: scoreColor }}>
             {signal.score}
           </p>
@@ -74,7 +74,7 @@ function WatchRow({
             {signal.weeklyChange} wk
           </p>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex w-full gap-2 flex-shrink-0 sm:w-auto">
           <Link href="/analyze" className="btn-secondary text-xs px-3 py-1.5">
             Analyze
           </Link>
@@ -181,7 +181,7 @@ export default function WatchlistPage() {
 
   return (
     <AppShell title="Watchlist" subtitle="Track niches and get notified when they move">
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-3">
         <div className="card p-4">
           <p className="text-[11px] mb-1" style={{ color: "var(--text-muted)" }}>
             Tracking
@@ -223,10 +223,10 @@ export default function WatchlistPage() {
             Free plan:
           </span>
           <span>
-            {items.length}/{FREE_WATCHLIST_LIMIT} watched signals. Pro unlocks unlimited watchlists and email alerts.
+            {items.length}/{FREE_WATCHLIST_LIMIT} watched signals. Pro access is in beta waitlist mode.
           </span>
           <Link href="/upgrade" className="ml-auto text-xs font-semibold" style={{ color: "var(--accent-bright)" }}>
-            Upgrade
+            Request access
           </Link>
         </div>
       )}

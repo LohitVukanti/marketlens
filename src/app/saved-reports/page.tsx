@@ -212,7 +212,7 @@ export default function SavedReportsPage() {
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-8">
+        <div className="flex flex-col items-start justify-between gap-4 mb-8 sm:flex-row">
           <div>
             <h1 className="font-serif text-3xl sm:text-4xl text-slate-900 mb-2">Saved Reports</h1>
             <p className="text-slate-500 text-sm">
@@ -221,7 +221,7 @@ export default function SavedReportsPage() {
           </div>
           <button
             onClick={() => router.push("/analyze")}
-            className="btn-primary flex-shrink-0 text-xs px-4 py-2"
+            className="btn-primary w-full flex-shrink-0 justify-center text-xs px-4 py-2 sm:w-auto"
           >
             + New Analysis
           </button>

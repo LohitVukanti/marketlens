@@ -65,6 +65,7 @@ export default function FeedClient({
   const [pendingSignalId, setPendingSignalId] = useState<string | null>(null);
   const [deletingSignalId, setDeletingSignalId] = useState<string | null>(null);
   const [watchError, setWatchError] = useState("");
+  const showWelcome = searchParams.get("welcome") === "1";
 
   useEffect(() => {
     async function loadWatchState() {
@@ -232,6 +233,30 @@ export default function FeedClient({
 
   return (
     <AppShell title="Trend Feed" subtitle="Live ecommerce opportunity signals">
+      {showWelcome && (
+        <div
+          className="rounded-2xl border p-4 mb-6"
+          style={{ borderColor: "rgba(99,102,241,0.28)", background: "rgba(99,102,241,0.07)" }}
+        >
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--accent-bright)" }}>
+            Welcome to the MarketLens beta
+          </p>
+          <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-secondary)" }}>
+            Start by checking the Trend Feed, running Deep Analysis on a product, and saving or watching anything worth revisiting.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link href="/feed" className="btn-secondary justify-center text-xs py-2">
+              Check Trend Feed
+            </Link>
+            <Link href="/analyze" className="btn-primary justify-center text-xs py-2">
+              Run Deep Analysis
+            </Link>
+            <Link href="/watchlist" className="btn-secondary justify-center text-xs py-2">
+              View Watchlist
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
           { label: "Signals Tracked", value: allSignals.length, color: "var(--accent-bright)" },
@@ -250,20 +275,20 @@ export default function FeedClient({
         ))}
       </div>
 
-      <div className="card p-4 mb-6 flex flex-wrap gap-3 items-center">
+      <div className="card p-3 mb-6 flex flex-col gap-3 sm:p-4">
         <input
-          className="input-base flex-1 min-w-40 text-xs py-2"
+          className="input-base text-xs py-2"
           placeholder="Search niches, tags, categories..."
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
 
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
           {DIRECTIONS.map((direction) => (
             <button
               key={direction.value}
               onClick={() => setDirFilter(direction.value)}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
+              className={`flex-shrink-0 text-xs px-3 py-2 rounded-lg font-medium transition-all ${
                 dirFilter === direction.value ? "text-white" : ""
               }`}
               style={
@@ -277,56 +302,58 @@ export default function FeedClient({
           ))}
         </div>
 
-        <select
-          className="input-base text-xs py-2 w-auto"
-          value={catFilter}
-          onChange={(event) => setCatFilter(event.target.value)}
-        >
-          <option value="all">All Categories</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {CATEGORY_ICONS[category]} {CATEGORY_LABELS[category]}
-            </option>
-          ))}
-        </select>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <select
+            className="input-base text-xs py-2"
+            value={catFilter}
+            onChange={(event) => setCatFilter(event.target.value)}
+          >
+            <option value="all">All Categories</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {CATEGORY_ICONS[category]} {CATEGORY_LABELS[category]}
+              </option>
+            ))}
+          </select>
 
-        <select
-          className="input-base text-xs py-2 w-auto"
-          value={originFilter}
-          onChange={(event) => setOriginFilter(event.target.value)}
-        >
-          {ORIGINS.map((origin) => (
-            <option key={origin.value} value={origin.value}>
-              {origin.label}
-            </option>
-          ))}
-        </select>
+          <select
+            className="input-base text-xs py-2"
+            value={originFilter}
+            onChange={(event) => setOriginFilter(event.target.value)}
+          >
+            {ORIGINS.map((origin) => (
+              <option key={origin.value} value={origin.value}>
+                {origin.label}
+              </option>
+            ))}
+          </select>
 
-        <select
-          className="input-base text-xs py-2 w-auto"
-          value={qualityFilter}
-          onChange={(event) => setQualityFilter(event.target.value)}
-        >
-          {QUALITY_FILTERS.map((quality) => (
-            <option key={quality.value} value={quality.value}>
-              {quality.label}
-            </option>
-          ))}
-        </select>
+          <select
+            className="input-base text-xs py-2"
+            value={qualityFilter}
+            onChange={(event) => setQualityFilter(event.target.value)}
+          >
+            {QUALITY_FILTERS.map((quality) => (
+              <option key={quality.value} value={quality.value}>
+                {quality.label}
+              </option>
+            ))}
+          </select>
 
-        <select
-          className="input-base text-xs py-2 w-auto"
-          value={sort}
-          onChange={(event) => setSort(event.target.value)}
-        >
-          {SORTS.map((sortOption) => (
-            <option key={sortOption.value} value={sortOption.value}>
-              Sort: {sortOption.label}
-            </option>
-          ))}
-        </select>
+          <select
+            className="input-base text-xs py-2"
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+          >
+            {SORTS.map((sortOption) => (
+              <option key={sortOption.value} value={sortOption.value}>
+                Sort: {sortOption.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        <span className="text-xs ml-auto" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
           {filtered.length} results · {dataSource === "supabase" ? "Supabase live" : "Mock fallback"}
         </span>
       </div>
@@ -382,13 +409,13 @@ export default function FeedClient({
         style={{ borderColor: "rgba(99,102,241,0.3)", background: "rgba(99,102,241,0.05)" }}
       >
         <p className="text-sm font-semibold mb-1" style={{ color: "var(--accent-bright)" }}>
-          Pro unlocks real-time alerts, full trend history, and additional signals
+          Pro access is in beta waitlist mode
         </p>
         <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-          Upgrade for unlimited tracking, email alerts, and deeper signal context.
+          Use the product, send feedback, and request Pro access when you know what would make it worth paying for.
         </p>
         <Link href="/upgrade" className="btn-primary text-sm px-6 py-2.5">
-          Upgrade to Pro
+          Request Pro Access
         </Link>
       </div>
     </AppShell>

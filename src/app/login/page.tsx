@@ -34,7 +34,7 @@ export default function LoginPage() {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         await finishAuth(data.user?.id);
-        router.push("/watchlist");
+        router.push("/feed?welcome=1");
         router.refresh();
         return;
       }
@@ -44,7 +44,7 @@ export default function LoginPage() {
 
       if (data.session) {
         await finishAuth(data.user?.id);
-        router.push("/watchlist");
+        router.push("/feed?welcome=1");
         router.refresh();
       } else {
         setMessage("Check your email to confirm the account, then log in.");

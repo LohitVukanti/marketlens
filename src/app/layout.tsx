@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { Metadata } from "next";
+import FeedbackWidget from "@/components/ui/FeedbackWidget";
 import "./globals.css";
 import "./platform.css";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-slate-50 text-slate-900 antialiased font-sans min-h-screen">
         {children}
+        <FeedbackWidget />
       </body>
     </html>
   );
