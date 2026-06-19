@@ -147,24 +147,32 @@ export default function TrendCard({
         </div>
         <div className="rounded-lg p-2" style={{ background: "var(--bg-hover)" }}>
           <p className="text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>
-            Reddit
+            Reddit {signal.redditSource === "reddit_public_json" ? "" : signal.redditSource === "unavailable" ? "(unavailable)" : "(estimate)"}
           </p>
           <p className="text-xs font-semibold mono" style={{ color: "var(--text-primary)" }}>
-            {signal.redditMentionsLast7Days ?? 0} mentions
+            {signal.redditSource === "reddit_public_json"
+              ? `${signal.redditMentionsLast7Days ?? 0} mentions`
+              : "Unavailable"}
           </p>
           <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-            {formatGrowth(signal.redditGrowthRate)} vs prev 7d
+            {signal.redditSource === "reddit_public_json"
+              ? `${formatGrowth(signal.redditGrowthRate)} vs prev 7d`
+              : "Needs Reddit confirmation"}
           </p>
         </div>
         <div className="rounded-lg p-2" style={{ background: "var(--bg-hover)" }}>
           <p className="text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>
-            Etsy
+            Etsy {signal.etsySource === "etsy_api" ? "(API)" : "(estimate)"}
           </p>
           <p className="text-xs font-semibold mono" style={{ color: "var(--text-primary)" }}>
-            {formatListingCount(signal.etsyListingCount)} listings
+            {signal.etsySource === "etsy_api"
+              ? `${formatListingCount(signal.etsyListingCount)} listings`
+              : "Estimate only"}
           </p>
           <p className="text-[10px] capitalize" style={{ color: "var(--text-muted)" }}>
-            {signal.etsyCompetitionLevel || signal.competitionLevel} competition · sat {signal.etsySaturationScore ?? "n/a"}
+            {signal.etsySource === "etsy_api"
+              ? `${signal.etsyCompetitionLevel || signal.competitionLevel} competition · sat ${signal.etsySaturationScore ?? "n/a"}`
+              : "Configure Etsy API to verify"}
           </p>
         </div>
         <div className="rounded-lg p-2" style={{ background: "var(--bg-hover)" }}>

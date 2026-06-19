@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createServerSupabase } from "@/lib/supabase";
-import { buildAnalysisPrompt, parseAIResponse } from "@/lib/ai-prompt";
+import { buildAnalysisPrompt, parseAIResponse, type TrendEvidenceContext } from "@/lib/ai-prompt";
 import { MOCK_REPORT_DATA } from "@/lib/mock-data";
 import { getUserFromAuthorization } from "@/lib/server-auth";
 import { createOrUpdateTrendSignalFromReport } from "@/lib/tracked-signal";
@@ -36,6 +36,68 @@ function checkRateLimit(ip: string): boolean {
   if (entry.count >= RATE_LIMIT) return false;
   entry.count++;
   return true;
+}
+
+function normalizeKeyword(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 120);
+}
+
+async function loadDiscoveredTrendEvidence(keyword: string): Promise<TrendEvidenceContext | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  if (!supabaseUrl || supabaseUrl.includes("your-project")) return null;
+
+  const supabase = createServerSupabase();
+  const { data, error } = await supabase
+    .from("trend_signals")
+    .select(`
+      keyword,
+      emergence_score,
+      data_quality,
+      source_count,
+      source_confidence,
+      google_growth_4w,
+      google_growth_8w,
+      acceleration_score,
+      reddit_source,
+      reddit_mentions_last_7_days,
+      reddit_growth_rate,
+      etsy_source,
+      etsy_listing_count,
+      etsy_competition_level,
+      why_trending
+    `)
+    .eq("keyword", normalizeKeyword(keyword))
+    .or("source_type.is.null,source_type.eq.discovered")
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) console.warn("[generate-report] Trend evidence lookup skipped:", error.message);
+    return null;
+  }
+
+  return {
+    keyword: data.keyword,
+    emergenceScore: data.emergence_score,
+    dataQuality: data.data_quality,
+    sourceCount: data.source_count,
+    sourceConfidence: data.source_confidence,
+    googleGrowth4w: data.google_growth_4w,
+    googleGrowth8w: data.google_growth_8w,
+    accelerationScore: data.acceleration_score,
+    redditSource: data.reddit_source,
+    redditMentionsLast7Days: data.reddit_mentions_last_7_days,
+    redditGrowthRate: data.reddit_growth_rate,
+    etsySource: data.etsy_source,
+    etsyListingCount: data.etsy_listing_count,
+    etsyCompetitionLevel: data.etsy_competition_level,
+    whyTrending: data.why_trending,
+  };
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse<GenerateReportResponse>> {
@@ -81,9 +143,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<GenerateRepor
   } else {
     // ── 4. Call AI API ──────────────────────────────────────
     try {
+      const trendEvidence = await loadDiscoveredTrendEvidence(niche);
       const prompt = buildAnalysisPrompt({
         niche, location, customer, productType, priceRange: priceRange ?? "", competitors: competitors ?? "",
-      });
+      }, trendEvidence);
 
       const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await client.chat.completions.create({

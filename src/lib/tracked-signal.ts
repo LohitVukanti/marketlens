@@ -74,7 +74,7 @@ function trendStateFor(score: number, velocity: number) {
   if (score >= 80 && velocity >= 12) return "breakout";
   if (velocity >= 8) return "rising";
   if (velocity <= -8) return "cooling";
-  return "emerging";
+  return "rising";
 }
 
 export async function createOrUpdateTrendSignalFromReport(report: SavedReport, owner: TrackingOwner = {}) {
@@ -91,7 +91,7 @@ export async function createOrUpdateTrendSignalFromReport(report: SavedReport, o
   const trendState = trendStateFor(score, velocity);
   const now = new Date().toISOString();
   const summary = `From Deep Analysis: ${report.report_data.summary || report.niche}`;
-  const whyTrending = `This signal was created from a MarketLens Deep Analysis for ${report.niche}. Market score is ${score}/100, demand trend context says: ${report.report_data.demandTrend || "additional trend collection can enrich this over time."}`;
+  const whyTrending = `This signal was created from a MarketLens Deep Analysis for ${report.niche}. It is not source-verified yet; use it as a research lead until Google, Reddit, or Etsy collection enriches it. Data confidence: ${report.report_data.dataConfidence || "needs manual validation."}`;
 
   const row = {
     id,
@@ -104,8 +104,8 @@ export async function createOrUpdateTrendSignalFromReport(report: SavedReport, o
     velocity_score: velocity,
     acceleration_score: acceleration,
     opportunity_score: score,
-    emergence_score: Math.max(25, Math.min(65, Math.round(score * 0.72))),
-    confidence_score: report.is_mock ? 45 : 62,
+    emergence_score: Math.max(25, Math.min(55, Math.round(score * 0.72))),
+    confidence_score: report.is_mock ? 38 : 52,
     data_quality: report.is_mock ? "demo" : "needs_confirmation",
     is_demo_data: report.is_mock,
     google_growth_4w: null,
@@ -126,7 +126,7 @@ export async function createOrUpdateTrendSignalFromReport(report: SavedReport, o
     created_by_user_id: owner.userId ?? null,
     created_by_session_id: owner.sessionId ?? null,
     source_count: 1,
-    source_confidence: report.is_mock ? 35 : 58,
+    source_confidence: report.is_mock ? 25 : 45,
     score_explanation: {
       formula: "Deep Analysis market score converted into a trackable trend signal; external collectors can enrich future values.",
       opportunity_score: score,

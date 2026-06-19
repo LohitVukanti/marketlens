@@ -60,6 +60,22 @@ except Exception as exc:
 `;
 
 const DEFAULT_TIMEOUT_MS = 12000;
+const REDDIT_SUBREDDITS = [
+  "Etsy",
+  "EtsySellers",
+  "Shopify",
+  "dropship",
+  "Entrepreneur",
+  "smallbusiness",
+  "handmade",
+  "crafts",
+  "BuyItForLife",
+  "ProductPorn",
+];
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function clamp(value, min = 0, max = 100) {
   return Math.min(max, Math.max(min, Math.round(Number.isFinite(value) ? value : 0)));
@@ -90,6 +106,15 @@ function stateFor(current, velocity, acceleration, baseline) {
   if (velocity <= -8 || acceleration <= -12) return "cooling";
   if (baseline >= 65 && Math.abs(velocity) < 7) return "saturated";
   return "rising";
+}
+
+function honestStateFor(current, velocity, acceleration, baseline, googleGrowth4w) {
+  if (googleGrowth4w <= 0 && acceleration <= 0) {
+    if (velocity <= -8 || acceleration <= -8) return "cooling";
+    return baseline >= 65 ? "saturated" : "rising";
+  }
+
+  return stateFor(current, velocity, acceleration, baseline);
 }
 
 function titleCase(value) {
@@ -183,15 +208,19 @@ function sourceCountFor(reddit, etsy, googleSource) {
   ].filter(Boolean).length || 1;
 }
 
-function sourceAgreementScore(velocity, acceleration, redditGrowthRate, etsyCompetitionLevel) {
+function sourceAgreementScore(velocity, acceleration, reddit, etsy) {
   const positiveSignals = [
     velocity >= 7,
     acceleration >= 2,
-    redditGrowthRate >= 25,
-    etsyCompetitionLevel === "low" || etsyCompetitionLevel === "medium",
+    reddit.source === "reddit_public_json" && reddit.growthRate >= 25,
+    etsy.source === "etsy_api" && (etsy.estimatedCompetitionLevel === "low" || etsy.estimatedCompetitionLevel === "medium"),
+  ].filter(Boolean).length;
+  const realSourceCount = [
+    reddit.source === "reddit_public_json",
+    etsy.source === "etsy_api",
   ].filter(Boolean).length;
 
-  return clamp(35 + positiveSignals * 16);
+  return clamp(28 + positiveSignals * 16 + realSourceCount * 8);
 }
 
 function confidenceFor(values, googleSource, reddit, etsy, sourceAgreement) {
@@ -201,69 +230,115 @@ function confidenceFor(values, googleSource, reddit, etsy, sourceAgreement) {
   return clamp(sourceConfidence * 0.72 + sourceAgreement * 0.18 + sourceCountFor(reddit, etsy, googleSource) * 4);
 }
 
-function scoreFor({ current, velocity, acceleration, redditGrowthRate, etsyCompetitionLevel, etsyListingCount, sourceAgreement }) {
+function scoreFor({ current, velocity, acceleration, googleGrowth4w, googleGrowth8w, reddit, etsy, sourceAgreement, sourceCount, confidence, isDemoData, dataQuality }) {
   const googleAccelerationScore = clamp(50 + acceleration * 2.4);
   const googleGrowthScore = clamp(50 + velocity * 2);
-  const redditGrowthScore = clamp(50 + redditGrowthRate * 0.35);
-  const etsySaturationScore = competitionScore(etsyCompetitionLevel, etsyListingCount);
+  const redditGrowthScore = reddit.source === "reddit_public_json" ? clamp(50 + reddit.growthRate * 0.35) : 20;
+  const etsySaturationScore = etsy.source === "etsy_api" ? competitionScore(etsy.estimatedCompetitionLevel, etsy.listingCount) : 28;
   const flatDemandPenalty = current >= 70 && Math.abs(velocity) < 7 ? 18 : 0;
+  const stalePenalty = googleGrowth8w < 8 ? 8 : 0;
 
-  return clamp(
+  const rawScore = clamp(
     googleAccelerationScore * 0.30 +
       googleGrowthScore * 0.20 +
       redditGrowthScore * 0.15 +
       etsySaturationScore * 0.20 +
       sourceAgreement * 0.15 -
-      flatDemandPenalty
+      flatDemandPenalty -
+      stalePenalty
   );
+
+  const caps = [
+    isDemoData ? 40 : 100,
+    sourceCount < 2 ? 60 : 100,
+    reddit.source !== "reddit_public_json" && etsy.source !== "etsy_api" ? 55 : 100,
+    dataQuality === "needs_confirmation" ? 60 : 100,
+    googleGrowth4w <= 0 && acceleration <= 0 ? 50 : 100,
+    confidence < 45 ? 50 : 100,
+  ];
+
+  return Math.min(rawScore, ...caps);
 }
 
-function dataQuality({ signalSource, sourceCount, confidence }) {
+function dataQuality({ signalSource, sourceCount, confidence, sourceAgreement, googleGrowth4w, acceleration, reddit, etsy }) {
   if (signalSource === "fallback_seed") return "demo";
   if (confidence < 45 || sourceCount < 2) return "needs_confirmation";
-  if (confidence >= 72 && sourceCount >= 2) return "verified";
+  if (
+    confidence >= 72 &&
+    sourceCount >= 2 &&
+    sourceAgreement >= 68 &&
+    (googleGrowth4w > 0 || acceleration > 0) &&
+    (reddit.source === "reddit_public_json" || etsy.source === "etsy_api")
+  ) return "verified";
   return "emerging";
 }
 
-function fallbackReddit(product) {
-  const previous = Math.round(2 + seededRand(product.seed + 101) * 16);
-  const movement = Math.round((seededRand(product.seed + 131) - 0.35) * 18);
-  const last = Math.max(0, previous + movement);
-
+function unavailableReddit(reason = "Reddit collection unavailable") {
   return {
     ok: false,
-    source: "fallback_estimate",
-    mentionsLast7Days: last,
-    mentionsPrevious7Days: previous,
-    growthRate: percentChange(last, previous),
-    confidence: 18,
+    source: "unavailable",
+    mentionsLast7Days: 0,
+    mentionsPrevious7Days: 0,
+    growthRate: 0,
+    confidence: 0,
+    reason,
   };
 }
 
-async function collectRedditForProduct(product) {
-  if (process.env.REDDIT_COLLECT_ENABLED === "false") return fallbackReddit(product);
-
+async function fetchRedditJson(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-  const url = new URL("https://www.reddit.com/search.json");
-  url.searchParams.set("q", `"${product.keyword}"`);
-  url.searchParams.set("sort", "new");
-  url.searchParams.set("t", "month");
-  url.searchParams.set("limit", "100");
 
   try {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        "User-Agent": process.env.REDDIT_USER_AGENT || "MarketLensSignalCollector/0.2",
+        "User-Agent":
+          process.env.REDDIT_USER_AGENT ||
+          "MarketLensBetaSignalCollector/0.3 (contact: riccu15@gmail.com)",
         Accept: "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
       },
     });
 
     if (!response.ok) throw new Error(`Reddit returned ${response.status}`);
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
-    const payload = await response.json();
-    const posts = payload?.data?.children ?? [];
+async function collectRedditForProduct(product) {
+  if (process.env.REDDIT_COLLECT_ENABLED === "false") {
+    return unavailableReddit("REDDIT_COLLECT_ENABLED=false");
+  }
+
+  const postsById = new Map();
+  const errors = [];
+
+  try {
+    for (const subreddit of REDDIT_SUBREDDITS) {
+      const url = new URL(`https://www.reddit.com/r/${subreddit}/search.json`);
+      url.searchParams.set("q", `"${product.keyword}"`);
+      url.searchParams.set("restrict_sr", "1");
+      url.searchParams.set("sort", "new");
+      url.searchParams.set("t", "month");
+      url.searchParams.set("limit", "25");
+
+      try {
+        const payload = await fetchRedditJson(url);
+        for (const post of payload?.data?.children ?? []) {
+          const id = post?.data?.id;
+          if (id) postsById.set(id, post);
+        }
+      } catch (error) {
+        errors.push(`${subreddit}: ${error.message}`);
+      }
+
+      await sleep(Number(process.env.REDDIT_REQUEST_DELAY_MS ?? 650));
+    }
+
+    const posts = Array.from(postsById.values());
     const nowSeconds = Date.now() / 1000;
     const last7Cutoff = nowSeconds - 7 * 24 * 60 * 60;
     const previous7Cutoff = nowSeconds - 14 * 24 * 60 * 60;
@@ -280,12 +355,12 @@ async function collectRedditForProduct(product) {
       mentionsLast7Days,
       mentionsPrevious7Days,
       growthRate: percentChange(mentionsLast7Days, mentionsPrevious7Days),
-      confidence: posts.length ? clamp(45 + Math.min(posts.length, 60)) : 35,
+      confidence: posts.length ? clamp(48 + Math.min(posts.length * 2, 42)) : 28,
+      searchedSubreddits: REDDIT_SUBREDDITS.length,
+      errors,
     };
   } catch (error) {
-    return { ...fallbackReddit(product), error: error.message };
-  } finally {
-    clearTimeout(timeout);
+    return { ...unavailableReddit(error.message), error: error.message };
   }
 }
 
@@ -295,7 +370,16 @@ async function collectRedditSignals() {
 
   for (const product of PRODUCTS) {
     const reddit = await collectRedditForProduct(product);
-    if (reddit.error) errors.push(`${product.keyword}: ${reddit.error}`);
+    if (reddit.error || reddit.source !== "reddit_public_json") {
+      errors.push(`${product.keyword}: ${reddit.error || reddit.reason || reddit.source}`);
+    }
+    console.log(
+      `[reddit] ${product.keyword}: ${reddit.source}${
+        reddit.source === "reddit_public_json"
+          ? ` (${reddit.mentionsLast7Days}/${reddit.mentionsPrevious7Days} mentions, confidence ${reddit.confidence})`
+          : ` (${reddit.reason || reddit.error || "unavailable"})`
+      }`
+    );
     results.set(product.keyword, reddit);
   }
 
@@ -317,18 +401,32 @@ function fallbackEtsy(product) {
     listingCount,
     estimatedCompetitionLevel: competitionFromListingCount(listingCount, product.competitionLevel),
     avgPrice: product.avgPrice,
-    confidence: 22,
+    confidence: 12,
   };
 }
 
 function formatEtsyPrice(price) {
   if (!price) return null;
   if (typeof price === "string") return price;
+  if (typeof price.amount === "string" && typeof price.divisor === "string") {
+    const amount = Number(price.amount) / Number(price.divisor);
+    return Number.isFinite(amount) ? `$${amount.toFixed(amount >= 10 ? 0 : 2)}` : null;
+  }
   if (typeof price.amount === "number" && typeof price.divisor === "number") {
     const amount = price.amount / price.divisor;
     return `$${amount.toFixed(amount >= 10 ? 0 : 2)}`;
   }
   return null;
+}
+
+function averagePriceLabel(prices, fallback) {
+  const numeric = prices
+    .map((price) => Number(String(price).replace(/[^0-9.]/g, "")))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  if (!numeric.length) return fallback;
+  const average = avg(numeric);
+  return `$${average.toFixed(average >= 10 ? 0 : 2)} avg`;
 }
 
 async function collectEtsyForProduct(product) {
@@ -363,7 +461,7 @@ async function collectEtsyForProduct(product) {
       source: "etsy_api",
       listingCount,
       estimatedCompetitionLevel: competitionFromListingCount(listingCount, product.competitionLevel),
-      avgPrice: prices[0] || product.avgPrice,
+      avgPrice: averagePriceLabel(prices, product.avgPrice),
       confidence: listingCount > 0 ? 78 : 42,
     };
   } catch (error) {
@@ -380,6 +478,9 @@ async function collectEtsySignals() {
   for (const product of PRODUCTS) {
     const etsy = await collectEtsyForProduct(product);
     if (etsy.error) errors.push(`${product.keyword}: ${etsy.error}`);
+    console.log(
+      `[etsy] ${product.keyword}: ${etsy.source} (${Number.isFinite(etsy.listingCount) ? `${etsy.listingCount} listings` : "no listing count"}, confidence ${etsy.confidence})`
+    );
     results.set(product.keyword, etsy);
   }
 
@@ -403,15 +504,17 @@ function collectGoogleTrends() {
   }
 }
 
-function buildExplanation({ current, baseline, velocity, acceleration, reddit, etsy, sourceAgreement, opportunity }) {
+function buildExplanation({ current, baseline, velocity, acceleration, googleGrowth4w, googleGrowth8w, reddit, etsy, sourceAgreement, opportunity }) {
   return {
     formula:
-      "30% Google acceleration, 20% Google 4-week growth, 15% Reddit mention growth, 20% Etsy saturation inverse, 15% source agreement/confidence",
+      "30% Google acceleration, 20% Google 4-week growth, 15% Reddit mention growth when real, 20% Etsy saturation inverse when real, 15% source agreement/confidence; caps apply for demo, one-source, fallback, and needs-confirmation signals",
     google: {
       current,
       baseline,
       velocity,
       acceleration,
+      growth_4w: googleGrowth4w,
+      growth_8w: googleGrowth8w,
       signal: velocity >= 7 ? "rising" : velocity <= -8 ? "cooling" : "stable",
     },
     reddit: {
@@ -430,22 +533,26 @@ function buildExplanation({ current, baseline, velocity, acceleration, reddit, e
   };
 }
 
-function buildWhyTrending(product, current, baseline, velocity, reddit, etsy) {
+function buildWhyTrending(product, current, baseline, velocity, googleGrowth4w, googleGrowth8w, reddit, etsy, quality, signalSource) {
   const searchTrend =
-    baseline > 0
-      ? `Search interest is ${velocity >= 0 ? "up" : "down"} ${Math.abs(percentChange(current, baseline))}% versus baseline`
-      : `Search interest is at ${current}/100`;
+    signalSource !== "google_trends"
+      ? "Demo/fallback signal. Google Trends collection is unavailable, so this row uses fallback seed data"
+      : baseline > 0
+      ? `Google Trends interest is ${velocity >= 0 ? "up" : "down"} ${Math.abs(percentChange(current, baseline))}% versus baseline, with ${formatPercent(googleGrowth4w)} 4-week growth and ${formatPercent(googleGrowth8w)} 8-week growth`
+      : `Google Trends interest is at ${current}/100`;
   const redditTrend =
-    reddit.growthRate >= 80
-      ? "Reddit mentions doubled"
-      : reddit.growthRate > 0
-        ? `Reddit mentions rose ${reddit.growthRate}%`
-        : reddit.growthRate < 0
-          ? `Reddit mentions fell ${Math.abs(reddit.growthRate)}%`
-          : "Reddit mentions are flat";
-  const etsyTrend = `Etsy competition is ${etsy.estimatedCompetitionLevel}${Number.isFinite(etsy.listingCount) ? ` with about ${etsy.listingCount.toLocaleString()} active listings` : ""}`;
+    reddit.source === "reddit_public_json"
+      ? reddit.growthRate > 0
+        ? `Reddit public data shows ${reddit.mentionsLast7Days} mentions in the last 7 days versus ${reddit.mentionsPrevious7Days} previously (${formatPercent(reddit.growthRate)})`
+        : `Reddit public data shows ${reddit.mentionsLast7Days} mentions in the last 7 days and no clear positive velocity`
+      : "Reddit data is unavailable and does not support the score";
+  const etsyTrend =
+    etsy.source === "etsy_api"
+      ? `Etsy API reports ${etsy.listingCount.toLocaleString()} active listings and ${etsy.estimatedCompetitionLevel} competition`
+      : `Etsy competition is estimated only because Etsy API is not configured or unavailable${Number.isFinite(etsy.listingCount) ? ` (${etsy.listingCount.toLocaleString()} estimated listings)` : ""}`;
+  const caveat = quality === "needs_confirmation" ? " Needs confirmation before acting." : "";
 
-  return `${searchTrend}, ${redditTrend.toLowerCase()}, and ${etsyTrend.toLowerCase()} for ${product.keyword}.`;
+  return `${searchTrend}. ${redditTrend}. ${etsyTrend}.${caveat}`;
 }
 
 function buildRows(series, source, redditResults, etsyResults) {
@@ -455,7 +562,7 @@ function buildRows(series, source, redditResults, etsyResults) {
     const found = series.find((item) => item.keyword === product.keyword && item.values?.length);
     const values = found ? found.values : fallbackSeries(product.seed);
     const signalSource = found?.source || source;
-    const reddit = redditResults.get(product.keyword) || fallbackReddit(product);
+    const reddit = redditResults.get(product.keyword) || unavailableReddit("No Reddit result returned");
     const etsy = etsyResults.get(product.keyword) || fallbackEtsy(product);
     const recent = values.slice(-4);
     const previous = values.slice(-8, -4);
@@ -465,32 +572,48 @@ function buildRows(series, source, redditResults, etsyResults) {
     const acceleration = clamp(avg(recent) - avg(previous), -100, 100);
     const googleGrowth4w = percentChange(avg(values.slice(-4)), avg(values.slice(-8, -4)));
     const googleGrowth8w = percentChange(avg(values.slice(-4)), avg(values.slice(-12, -8)));
-    const trendState = stateFor(current, velocity, acceleration, baseline);
-    const sourceAgreement = sourceAgreementScore(velocity, acceleration, reddit.growthRate, etsy.estimatedCompetitionLevel);
+    const trendState = honestStateFor(current, velocity, acceleration, baseline, googleGrowth4w);
+    const sourceAgreement = sourceAgreementScore(velocity, acceleration, reddit, etsy);
     const sourceCount = sourceCountFor(reddit, etsy, signalSource);
     const conf = confidenceFor(values, signalSource, reddit, etsy, sourceAgreement);
-    const quality = dataQuality({ signalSource, sourceCount, confidence: conf });
+    const quality = dataQuality({
+      signalSource,
+      sourceCount,
+      confidence: conf,
+      sourceAgreement,
+      googleGrowth4w,
+      acceleration,
+      reddit,
+      etsy,
+    });
     const opportunity = scoreFor({
       current,
       velocity,
       acceleration,
-      redditGrowthRate: reddit.growthRate,
-      etsyCompetitionLevel: etsy.estimatedCompetitionLevel,
-      etsyListingCount: etsy.listingCount,
+      googleGrowth4w,
+      googleGrowth8w,
+      reddit,
+      etsy,
       sourceAgreement,
+      sourceCount,
+      confidence: conf,
+      isDemoData: signalSource === "fallback_seed",
+      dataQuality: quality,
     });
-    const whyTrending = buildWhyTrending(product, current, baseline, velocity, reddit, etsy);
+    const whyTrending = buildWhyTrending(product, current, baseline, velocity, googleGrowth4w, googleGrowth8w, reddit, etsy, quality, signalSource);
     const scoreExplanation = buildExplanation({
       current,
       baseline,
       velocity,
       acceleration,
+      googleGrowth4w,
+      googleGrowth8w,
       reddit,
       etsy,
       sourceAgreement,
       opportunity,
     });
-    const summary = `${whyTrending} Confidence is ${conf}/100 across ${sourceCount} real source${sourceCount === 1 ? "" : "s"}; score reflects Google velocity (${velocity}), acceleration (${acceleration}), Reddit growth (${formatPercent(reddit.growthRate)}), and Etsy saturation (${etsy.estimatedCompetitionLevel}).`;
+    const summary = `${whyTrending} Confidence is ${conf}/100 across ${sourceCount} real source${sourceCount === 1 ? "" : "s"}. Score caps are applied when Reddit/Etsy are unavailable, data needs confirmation, or source count is low.`;
 
     return {
       id: rowId(product.keyword),
@@ -509,7 +632,7 @@ function buildRows(series, source, redditResults, etsyResults) {
       google_growth_8w: googleGrowth8w,
       etsy_saturation_score: competitionScore(etsy.estimatedCompetitionLevel, etsy.listingCount),
       data_quality: quality,
-      is_demo_data: signalSource === "fallback_seed" || reddit.source === "fallback_estimate" || etsy.source === "fallback_estimate",
+      is_demo_data: signalSource === "fallback_seed",
       first_detected_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7 * (product.seed - 10)).toISOString(),
       trend_age_weeks: product.seed - 10,
       trend_state: trendState,
@@ -517,8 +640,8 @@ function buildRows(series, source, redditResults, etsyResults) {
       tags: product.tags,
       platforms: [
         signalSource === "google_trends" ? "Google Trends" : "Google fallback",
-        reddit.source === "reddit_public_json" ? "Reddit" : "Reddit fallback",
-        etsy.source === "etsy_api" ? "Etsy" : "Etsy fallback",
+        reddit.source === "reddit_public_json" ? "Reddit" : "Reddit unavailable",
+        etsy.source === "etsy_api" ? "Etsy API" : "Etsy estimate",
       ],
       avg_price: etsy.avgPrice || product.avgPrice,
       competition_level: etsy.estimatedCompetitionLevel || product.competitionLevel,
@@ -613,6 +736,16 @@ async function main() {
     redditResults,
     etsyResults
   );
+  const runSummary = rows.reduce(
+    (summary, row) => {
+      if (row.source_type === "from_analysis") summary.fromAnalysis += 1;
+      if (row.is_demo_data || row.data_quality === "demo") summary.fallbackDemo += 1;
+      if (row.data_quality === "needs_confirmation") summary.needsConfirmation += 1;
+      if (!row.is_demo_data && row.source_type !== "from_analysis" && row.source_count >= 2) summary.realDiscovered += 1;
+      return summary;
+    },
+    { realDiscovered: 0, needsConfirmation: 0, fallbackDemo: 0, fromAnalysis: 0 }
+  );
 
   let upsertRows = rows;
   let { error: upsertError } = await supabase.from("trend_signals").upsert(upsertRows, {
@@ -669,8 +802,11 @@ async function main() {
   console.log(`Updated ${rows.length} trend signals with Google, Reddit, and Etsy scoring.`);
   console.log(`Candidate keywords: ${candidateProducts.length} verified additions loaded.`);
   console.log(`Google source: ${usingGoogle ? "Google Trends" : "fallback seed data"}.`);
-  console.log(`Reddit source: ${redditErrors.length ? "public JSON with fallbacks" : "public JSON"}.`);
+  console.log(`Reddit source: ${redditErrors.length ? "public JSON where available; unavailable otherwise" : "public JSON"}.`);
   console.log(`Etsy source: ${process.env.ETSY_API_KEY ? "official Etsy API" : "fallback estimates"}.`);
+  console.log(
+    `Signal credibility: ${runSummary.realDiscovered} real discovered, ${runSummary.needsConfirmation} needs confirmation, ${runSummary.fallbackDemo} fallback/demo hidden by default, ${runSummary.fromAnalysis} from analysis.`
+  );
   if (warningMessages.length) console.log(`Warnings: ${warningMessages.join(" | ")}`);
 }
 

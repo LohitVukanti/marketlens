@@ -19,6 +19,19 @@ function mockModeEnabled() {
   return process.env.NEXT_PUBLIC_MOCK_MODE === "true";
 }
 
+const STALE_SEED_KEYWORDS = new Set([
+  "sourdough starter kit",
+  "crochet cup holder",
+  "mushroom lamp",
+]);
+
+function credibleDiscoveredSignal(signal: TrendSignal) {
+  if (signal.sourceType === "from_analysis") return false;
+  if (STALE_SEED_KEYWORDS.has((signal.keyword || signal.name).toLowerCase())) return false;
+  if (!mockModeEnabled() && (signal.isDemoData || signal.dataQuality === "demo")) return false;
+  return true;
+}
+
 export async function getFeedSignals(): Promise<FeedSignalResult> {
   if (!hasSupabaseEnv()) {
     return mockModeEnabled() ? { signals: TREND_SIGNALS, source: "mock" } : { signals: [], source: "supabase" };
@@ -39,7 +52,7 @@ export async function getFeedSignals(): Promise<FeedSignalResult> {
     .from("trend_signals")
     .select("*")
     .neq("source_type", "from_analysis")
-    .order("opportunity_score", { ascending: false })
+    .order("emergence_score", { ascending: false })
     .limit(150);
 
   if (discoveredError) {
@@ -63,7 +76,10 @@ export async function getFeedSignals(): Promise<FeedSignalResult> {
       return mockModeEnabled() ? { signals: TREND_SIGNALS, source: "mock" } : { signals: [], source: "supabase" };
     }
 
-    return { signals: (data as TrendSignalRow[]).map(mapTrendSignalRow), source: "supabase" };
+    return {
+      signals: (data as TrendSignalRow[]).map(mapTrendSignalRow).filter(credibleDiscoveredSignal),
+      source: "supabase",
+    };
   }
 
   const rowsById = new Map<string, TrendSignalRow>();
@@ -78,7 +94,7 @@ export async function getFeedSignals(): Promise<FeedSignalResult> {
 
   const signals = rows
     .map(mapTrendSignalRow)
-    .filter((signal) => mockModeEnabled() || !signal.isDemoData);
+    .filter(credibleDiscoveredSignal);
 
   return { signals, source: "supabase" };
 }

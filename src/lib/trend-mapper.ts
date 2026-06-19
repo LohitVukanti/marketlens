@@ -63,16 +63,78 @@ function volumeLabel(value: number) {
   return "Low";
 }
 
+function isRealReddit(row: TrendSignalRow) {
+  return row.reddit_source === "reddit_public_json";
+}
+
+function isRealEtsy(row: TrendSignalRow) {
+  return row.etsy_source === "etsy_api";
+}
+
+function isRealGoogle(row: TrendSignalRow) {
+  return row.signal_source === "google_trends";
+}
+
+function externalRealSourceCount(row: TrendSignalRow) {
+  return [isRealGoogle(row), isRealReddit(row), isRealEtsy(row)].filter(Boolean).length;
+}
+
+function fallbackRedditAndEtsy(row: TrendSignalRow) {
+  return !isRealReddit(row) && !isRealEtsy(row);
+}
+
+function hasPositiveGoogleMovement(row: TrendSignalRow) {
+  return (row.google_growth_4w ?? 0) > 0 || row.acceleration_score > 0;
+}
+
+function effectiveDataQuality(row: TrendSignalRow): TrendSignal["dataQuality"] | undefined {
+  const sourceCount = row.source_count ?? externalRealSourceCount(row);
+  const realSources = externalRealSourceCount(row);
+  const sourceConfidence = row.source_confidence ?? 0;
+
+  if (row.is_demo_data || row.signal_source === "fallback_seed") return "demo";
+  if (row.source_type === "from_analysis" && realSources < 2) return "needs_confirmation";
+  if (!hasPositiveGoogleMovement(row)) return "needs_confirmation";
+  if (sourceCount < 2 || fallbackRedditAndEtsy(row)) return "needs_confirmation";
+  if (
+    row.data_quality === "verified" &&
+    sourceCount >= 2 &&
+    realSources >= 2 &&
+    sourceConfidence >= 68
+  ) return "verified";
+  if (row.data_quality === "emerging" || row.data_quality === "verified") return "emerging";
+  return row.data_quality ?? "needs_confirmation";
+}
+
+function cappedEmergenceScore(row: TrendSignalRow, dataQuality: TrendSignal["dataQuality"] | undefined) {
+  const sourceCount = row.source_count ?? externalRealSourceCount(row);
+  const realSources = externalRealSourceCount(row);
+  const rawScore = row.emergence_score ?? row.opportunity_score;
+  const caps = [
+    row.is_demo_data || row.signal_source === "fallback_seed" ? 40 : 100,
+    sourceCount < 2 ? 60 : 100,
+    fallbackRedditAndEtsy(row) ? 55 : 100,
+    dataQuality === "needs_confirmation" ? 60 : 100,
+    row.source_type === "from_analysis" && realSources < 2 ? 55 : 100,
+    !hasPositiveGoogleMovement(row) ? 50 : 100,
+  ];
+
+  return Math.min(rawScore, ...caps);
+}
+
 export function mapTrendSignalRow(row: TrendSignalRow): TrendSignal {
+  const dataQuality = effectiveDataQuality(row);
+  const emergenceScore = cappedEmergenceScore(row, dataQuality);
+
   return {
     id: row.id,
     keyword: row.keyword,
     name: row.name,
     niche: row.niche,
     category: row.category,
-    score: row.opportunity_score,
-    opportunityScore: row.opportunity_score,
-    emergenceScore: row.emergence_score ?? row.opportunity_score,
+    score: emergenceScore,
+    opportunityScore: emergenceScore,
+    emergenceScore,
     momentum: row.velocity_score,
     velocityScore: row.velocity_score,
     accelerationScore: row.acceleration_score,
@@ -94,7 +156,7 @@ export function mapTrendSignalRow(row: TrendSignalRow): TrendSignal {
     googleGrowth4w: row.google_growth_4w ?? undefined,
     googleGrowth8w: row.google_growth_8w ?? undefined,
     etsySaturationScore: row.etsy_saturation_score ?? undefined,
-    dataQuality: row.data_quality ?? undefined,
+    dataQuality,
     isDemoData: row.is_demo_data ?? false,
     firstDetectedAt: row.first_detected_at ?? row.detected_at ?? undefined,
     lastUpdatedAt: row.updated_at ?? undefined,

@@ -8,7 +8,48 @@ import type { AnalysisFormInputs, ReportData, OpportunityFactor } from "@/types"
 
 // ---- Prompt Builder -----------------------------------------
 
-export function buildAnalysisPrompt(inputs: AnalysisFormInputs): string {
+export type TrendEvidenceContext = {
+  keyword: string;
+  emergenceScore?: number | null;
+  dataQuality?: string | null;
+  sourceCount?: number | null;
+  sourceConfidence?: number | null;
+  googleGrowth4w?: number | null;
+  googleGrowth8w?: number | null;
+  accelerationScore?: number | null;
+  redditSource?: string | null;
+  redditMentionsLast7Days?: number | null;
+  redditGrowthRate?: number | null;
+  etsySource?: string | null;
+  etsyListingCount?: number | null;
+  etsyCompetitionLevel?: string | null;
+  whyTrending?: string | null;
+};
+
+function trendEvidenceBlock(context?: TrendEvidenceContext | null) {
+  if (!context) {
+    return `No matching verified MarketLens trend signal was found for this product keyword. Treat source-specific claims as assumptions unless the user supplied evidence.`;
+  }
+
+  return `Available MarketLens trend evidence for this keyword:
+- Keyword: ${context.keyword}
+- Emergence score: ${context.emergenceScore ?? "not available"}
+- Data quality: ${context.dataQuality ?? "not available"}
+- Source count: ${context.sourceCount ?? "not available"}
+- Source confidence: ${context.sourceConfidence ?? "not available"}
+- Google 4-week growth: ${context.googleGrowth4w ?? "not available"}
+- Google 8-week growth: ${context.googleGrowth8w ?? "not available"}
+- Google acceleration score: ${context.accelerationScore ?? "not available"}
+- Reddit source: ${context.redditSource ?? "not available"}
+- Reddit mentions last 7 days: ${context.redditMentionsLast7Days ?? "not available"}
+- Reddit growth rate: ${context.redditGrowthRate ?? "not available"}
+- Etsy source: ${context.etsySource ?? "not available"}
+- Etsy listing count: ${context.etsyListingCount ?? "not available"}
+- Etsy competition level: ${context.etsyCompetitionLevel ?? "not available"}
+- Why trending: ${context.whyTrending ?? "not available"}`;
+}
+
+export function buildAnalysisPrompt(inputs: AnalysisFormInputs, evidence?: TrendEvidenceContext | null): string {
   const { niche, location, customer, productType, priceRange, competitors } = inputs;
 
   return `You are a senior ecommerce product trend analyst specializing in Etsy, Shopify, print-on-demand, handmade products, digital products, and online marketplace competition.
@@ -17,6 +58,8 @@ Analyze whether the following product opportunity is worth selling online and re
 
 {
   "marketScore": <integer 0-100. Calculated as the sum of 5 factors below, each scored 0-20>,
+  "verdict": <one of "Strong opportunity", "Worth testing", "Needs more validation", "Probably saturated">,
+  "dataConfidence": <string: concise section distinguishing verified data, estimated data, assumptions, and AI reasoning used in this report>,
   "summary": <string: 2-3 paragraph executive summary covering ecommerce demand, trend maturity, saturation risk, and competitive landscape>,
   "targetCustomer": <string: detailed customer persona with demographics, psychographics, shopping behavior, average order value>,
   "competitorPositioning": <string: analysis of the competitive landscape, naming specific incumbents and their strategic weaknesses>,
@@ -26,6 +69,7 @@ Analyze whether the following product opportunity is worth selling online and re
   "differentiationStrategy": <string: specific, actionable differentiation tactics unique to this product niche, buyer, and sales channel>,
   "marketingChannels": <array of 6-7 specific channel strings, each with a brief tactic note>,
   "risks": <array of 5-6 specific risk strings with mitigation hints>,
+  "manualValidationChecklist": <array of 5-7 concrete checks the seller should do manually on Etsy, Shopify, TikTok, Pinterest, Google Trends, or marketplaces before acting>,
   "actionPlan": <array of exactly 6 sequential action item strings, each beginning with a timeframe like "Week 1-2:">,
   "competitorTable": [
     {
@@ -48,6 +92,11 @@ Analyze whether the following product opportunity is worth selling online and re
 }
 
 IMPORTANT: marketScore MUST equal the exact sum of the 5 opportunityFactors values.
+IMPORTANT: Do not say "Google Trends shows", "Etsy shows", "Reddit shows", "market size is", "CAGR", "search volume", "revenue", or "sales" unless that exact evidence is provided above or by the user.
+IMPORTANT: If evidence is weak, missing, estimated, or one-source, choose "Needs more validation" unless the competitive/saturation evidence clearly supports "Probably saturated".
+IMPORTANT: A "Strong opportunity" verdict requires credible source-backed evidence, not just plausible AI reasoning.
+
+${trendEvidenceBlock(evidence)}
 
 Product details to analyze:
 - Product Keyword / Niche: ${niche}
@@ -88,9 +137,12 @@ export function parseAIResponse(raw: string): ReportData {
   // Validate required top-level fields
   const required = [
     "marketScore",
+    "verdict",
+    "dataConfidence",
     "summary",
     "targetCustomer",
     "customerPainPoints",
+    "manualValidationChecklist",
     "actionPlan",
     "competitorTable",
     "chartData",

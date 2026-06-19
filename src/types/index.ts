@@ -22,6 +22,9 @@ export interface Competitor {
 /** Full AI-generated market intelligence report data */
 export interface ReportData {
   marketScore: number; // 0–100 composite score
+  verdict?: "Strong opportunity" | "Worth testing" | "Needs more validation" | "Probably saturated";
+  dataConfidence?: string;
+  manualValidationChecklist?: string[];
   summary: string;
   targetCustomer: string;
   competitorPositioning: string;

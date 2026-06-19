@@ -32,7 +32,7 @@ const SORTS = [
 ];
 
 const ORIGINS = [
-  { value: "all", label: "All" },
+  { value: "all", label: "All Credible" },
   { value: "discovered", label: "Discovered" },
   { value: "my-analyses", label: "My Analyses" },
 ];
@@ -108,7 +108,7 @@ export default function FeedClient({
 
   const filtered = useMemo(() => {
     let next = [...allSignals];
-    if (originFilter === "discovered") {
+    if (originFilter === "all" || originFilter === "discovered") {
       next = next.filter((trend) => trend.sourceType !== "from_analysis");
     }
     if (originFilter === "my-analyses") {
@@ -149,7 +149,8 @@ export default function FeedClient({
         const rankDiff =
           (qualityRank[b.dataQuality ?? (b.isDemoData ? "demo" : "needs_confirmation")] ?? 0) -
           (qualityRank[a.dataQuality ?? (a.isDemoData ? "demo" : "needs_confirmation")] ?? 0);
-        return rankDiff || (b.emergenceScore ?? b.score) - (a.emergenceScore ?? a.score);
+        const sourceDiff = (b.sourceCount ?? 1) - (a.sourceCount ?? 1);
+        return rankDiff || sourceDiff || (b.emergenceScore ?? b.score) - (a.emergenceScore ?? a.score);
       });
     }
     if (sort === "momentum") next.sort((a, b) => b.momentum - a.momentum);
@@ -257,6 +258,15 @@ export default function FeedClient({
           </div>
         </div>
       )}
+      <div
+        className="rounded-2xl border p-4 mb-6 text-xs leading-relaxed"
+        style={{ borderColor: "rgba(99,102,241,0.22)", background: "rgba(99,102,241,0.05)", color: "var(--text-secondary)" }}
+      >
+        <span className="font-semibold" style={{ color: "var(--accent-bright)" }}>
+          How to read this feed:
+        </span>{" "}
+        Signals are ranked by emergence score and confidence. Low-confidence and one-source signals are research leads, not recommendations.
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
           { label: "Signals Tracked", value: allSignals.length, color: "var(--accent-bright)" },

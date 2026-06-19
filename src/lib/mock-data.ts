@@ -8,6 +8,9 @@ import type { ReportData, SavedReport } from "@/types";
 
 export const MOCK_REPORT_DATA: ReportData = {
   marketScore: 72,
+  verdict: "Needs more validation",
+  dataConfidence:
+    "This sample report uses demo data. No live Google Trends, Reddit, or Etsy API evidence is attached to this mock analysis. Treat the conclusions as AI reasoning and product-research prompts, not verified demand or sales data.",
 
   summary:
     "Pet loss memorial candles are a directional ecommerce opportunity for sellers who can combine sympathy gifting, personalization, and tasteful design. The product sits at the intersection of pet ownership, memorial keepsakes, and handmade home fragrance - a niche where buyers are often searching for something more thoughtful than a generic condolence gift.\n\nMarketplace competition exists, especially on Etsy, but many listings lean on similar paw-print artwork and generic sympathy copy. The opportunity is not simply to list another candle; it is to validate search demand, watch saturation, and differentiate through personalization, packaging, scent positioning, and emotional specificity.\n\nThis demo report uses sample data for product-analysis UX. It should be treated as a directional example, not verified sales or revenue intelligence.",
@@ -52,6 +55,15 @@ export const MOCK_REPORT_DATA: ReportData = {
     "Candles add shipping and breakage considerations that digital or POD products do not have",
     "Demand may be steady rather than accelerating; verify trend movement before scaling inventory",
     "Etsy dependency can limit control over acquisition costs and customer relationships",
+  ],
+
+  manualValidationChecklist: [
+    "Check Etsy manually for current listing count, review depth, bestseller badges, and repeated design patterns.",
+    "Check Google Trends for the exact phrase and close variants over 4-week and 12-month windows.",
+    "Search Reddit, TikTok, and Pinterest for recent buyer language around pet memorial gifts.",
+    "Record top 20 marketplace prices and fulfillment promises before setting your own price.",
+    "Test 3 listing thumbnails or product mockups before producing inventory.",
+    "Confirm shipping cost, breakage risk, and personalization workflow before scaling.",
   ],
 
   actionPlan: [

@@ -161,8 +161,8 @@ MarketLens has a multi-source signal path for `/feed`:
 - `collection_jobs` records collector runs and fallback reasons.
 - `/feed` reads Supabase first and falls back to the original mock feed only when Supabase is not configured, the query fails, or there are no rows.
 - Google Trends remains the primary search-interest signal.
-- Reddit public JSON search is used for mention growth when available.
-- Etsy listing data uses the official Etsy API when `ETSY_API_KEY` is present; otherwise the collector uses deterministic fallback estimates.
+- Reddit subreddit-scoped public JSON search is used for mention growth when available. If Reddit blocks requests or `REDDIT_COLLECT_ENABLED=false`, Reddit is stored as `unavailable` and does not boost scoring.
+- Etsy listing data uses the official Etsy API when `ETSY_API_KEY` is present; otherwise the collector stores deterministic fallback estimates that are labeled and capped in scoring.
 
 ### Required env vars
 
@@ -174,8 +174,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 
 # Optional source enrichment
-REDDIT_USER_AGENT=MarketLensSignalCollector/0.2
+REDDIT_USER_AGENT=MarketLensBetaSignalCollector/0.3 (contact: you@example.com)
 REDDIT_COLLECT_ENABLED=true
+REDDIT_REQUEST_DELAY_MS=650
 ETSY_API_KEY=your_etsy_api_key_here
 ETSY_COLLECT_ENABLED=true
 ```
@@ -205,32 +206,51 @@ The signal enrichment migration adds:
 
 ### Multi-source scoring
 
-`npm run signals:update` now builds an explainable `opportunity_score` from:
+`npm run signals:update` now builds an explainable `emergence_score` from:
 
-- 24% current Google Trends interest
-- 22% Google Trends velocity
-- 13% Google Trends acceleration
-- 16% Reddit mention growth
-- 15% Etsy competition/saturation
-- 10% source agreement
+- 30% Google Trends acceleration
+- 20% Google Trends 4-week growth
+- 15% Reddit mention growth, only when real Reddit public JSON data is available
+- 20% Etsy saturation inverse, only when Etsy API data is available
+- 15% source agreement/confidence
 
-The collector also writes `why_trending`, for example: search interest rose versus baseline, Reddit mentions increased, and Etsy competition remains low. `/feed` shows Google, Reddit, Etsy, and confidence details on each card.
+Strict caps keep weak signals honest:
+
+- demo or Google fallback signals max at 40
+- one-source signals max at 60
+- signals with both Reddit and Etsy unavailable/fallback max at 55
+- `needs_confirmation` signals max around 60
+- flat or negative Google growth cannot be labeled `emerging`
+
+The collector also writes `why_trending`, for example: Google Trends movement, whether Reddit data is available, whether Etsy is API-backed or an estimate, and when the signal needs confirmation. `/feed` shows Google, Reddit, Etsy, and confidence details on each card.
 
 ### Source reliability and fallbacks
 
 Real sources:
 
 - Google Trends through local Python `pytrends`, when available.
-- Reddit public JSON search endpoint, when reachable and not rate-limited.
+- Reddit public JSON from ecommerce/product-relevant subreddits, when reachable and not rate-limited.
 - Etsy official API, only when `ETSY_API_KEY` is configured.
 
 Fallback sources:
 
 - Google fallback seed data when `pytrends`, Python, network, or Google Trends fails.
-- Reddit deterministic mention estimates when Reddit is disabled, blocked, rate-limited, or unavailable.
-- Etsy deterministic competition estimates when `ETSY_API_KEY` is missing or the API fails.
+- Reddit is stored as `unavailable` when disabled, blocked, rate-limited, or unavailable.
+- Etsy deterministic competition estimates when `ETSY_API_KEY` is missing or the API fails. These estimates are labeled `fallback_estimate` and receive low confidence.
 
 Fallbacks never block the collector. Failures are recorded in `collection_jobs.error_message`, and the update finishes as `completed_with_warnings`.
+
+### Etsy API setup
+
+To collect real Etsy listing data:
+
+1. Create or log into an Etsy developer account at `https://www.etsy.com/developers`.
+2. Create an app for MarketLens and copy the app keystring.
+3. Set `ETSY_API_KEY` to that keystring.
+4. Keep `ETSY_COLLECT_ENABLED=true`.
+5. Run `npm run signals:update`.
+
+Without `ETSY_API_KEY`, MarketLens still runs but Etsy values are clearly labeled as estimates and cannot produce verified signals on their own.
 
 ### Phase 2 Watchlists and Alert Thresholds
 

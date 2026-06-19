@@ -111,8 +111,13 @@ function trendState(
   currentValue: number,
   velocityScore: number,
   accelerationScore: number,
-  baselineValue: number
+  baselineValue: number,
+  growth4w = 0
 ): TrendState {
+  if (growth4w <= 0 && accelerationScore <= 0) {
+    if (velocityScore <= -8 || accelerationScore <= -8) return "cooling";
+    return baselineValue >= 65 ? "saturated" : "rising";
+  }
   if (currentValue >= 80 && velocityScore >= 24) return "breakout";
   if (velocityScore >= 12 && accelerationScore >= 2) return "emerging";
   if (velocityScore >= 7) return "rising";
@@ -153,6 +158,9 @@ function emergenceScore(params: {
   growth8w: number;
   confidence: number;
   competitionLevel: ProductKeyword["competitionLevel"];
+  source: SignalSource;
+  sourceCount?: number;
+  dataQuality?: TrendSignal["dataQuality"];
 }) {
   const accelerationComponent = clamp(50 + params.accelerationScore * 2.4);
   const growth4wComponent = clamp(50 + params.growth4w * 0.45);
@@ -162,7 +170,7 @@ function emergenceScore(params: {
   const flatDemandPenalty = params.currentValue >= 70 && Math.abs(params.velocityScore) < 7 ? 18 : 0;
   const stalePenalty = params.growth8w < 8 ? 10 : 0;
 
-  return clamp(
+  const rawScore = clamp(
     accelerationComponent * 0.30 +
       growth4wComponent * 0.20 +
       redditComponent * 0.15 +
@@ -171,12 +179,23 @@ function emergenceScore(params: {
       flatDemandPenalty -
       stalePenalty
   );
+
+  const sourceCount = params.sourceCount ?? 1;
+  const caps = [
+    params.source === "fallback_seed" ? 40 : 100,
+    sourceCount < 2 ? 60 : 100,
+    params.dataQuality === "needs_confirmation" ? 60 : 100,
+    params.growth4w <= 0 && params.accelerationScore <= 0 ? 50 : 100,
+    params.confidence < 45 ? 50 : 100,
+  ];
+
+  return Math.min(rawScore, ...caps);
 }
 
-function dataQuality(source: SignalSource, confidence: number, sourceCount = 1): TrendSignal["dataQuality"] {
+function dataQuality(source: SignalSource, confidence: number, sourceCount = 1, growth4w = 0, acceleration = 0): TrendSignal["dataQuality"] {
   if (source === "fallback_seed") return "demo";
   if (confidence < 45 || sourceCount < 2) return "needs_confirmation";
-  if (confidence >= 72 && sourceCount >= 2) return "verified";
+  if (confidence >= 72 && sourceCount >= 2 && (growth4w > 0 || acceleration > 0)) return "verified";
   return "emerging";
 }
 
@@ -196,7 +215,7 @@ function summaryFor(signal: {
       ? `${signal.velocityScore} points above baseline`
       : `${Math.abs(signal.velocityScore)} points below baseline`;
 
-  return `${sourceText} puts ${signal.keyword} at ${signal.currentValue}/100, ${movement}, with ${signal.accelerationScore >= 0 ? "positive" : "negative"} acceleration. State: ${signal.state}. Confidence is ${signal.confidence}/100 based on series coverage and source quality.`;
+  return `${sourceText} puts ${signal.keyword} at ${signal.currentValue}/100, ${movement}, with ${signal.accelerationScore >= 0 ? "positive" : "negative"} acceleration. State: ${signal.state}. Confidence is ${signal.confidence}/100 based on series coverage and source quality. Demo fallback signals are research examples, not verified product recommendations.`;
 }
 
 export function buildSignalsFromSeries(
@@ -215,10 +234,10 @@ export function buildSignalsFromSeries(
     const accelerationScore = clamp(avg(recent) - previousAvg, -100, 100);
     const growth4w = percentChange(avg(values.slice(-4)), avg(values.slice(-8, -4)));
     const growth8w = percentChange(avg(values.slice(-4)), avg(values.slice(-12, -8)));
-    const state = trendState(currentValue, velocityScore, accelerationScore, baselineValue);
+    const state = trendState(currentValue, velocityScore, accelerationScore, baselineValue, growth4w);
     const confidence = confidenceScore(values, found?.source ?? source);
     const signalSource = found?.source ?? source;
-    const quality = dataQuality(signalSource, confidence);
+    const quality = dataQuality(signalSource, confidence, 1, growth4w, accelerationScore);
     const score = emergenceScore({
       currentValue,
       velocityScore,
@@ -227,6 +246,9 @@ export function buildSignalsFromSeries(
       growth8w,
       confidence,
       competitionLevel: product.competitionLevel,
+      source: signalSource,
+      sourceCount: 1,
+      dataQuality: quality,
     });
 
     return {
@@ -260,7 +282,7 @@ export function buildSignalsFromSeries(
       competitionLevel: product.competitionLevel,
       avgPrice: product.avgPrice,
       tags: product.tags,
-      platforms: ["Google Trends", "Supabase"],
+      platforms: signalSource === "fallback_seed" ? ["Demo fallback"] : ["Google Trends", "Supabase"],
       summary: summaryFor({
         keyword: product.keyword,
         state,

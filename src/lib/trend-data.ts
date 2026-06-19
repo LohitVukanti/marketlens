@@ -65,7 +65,7 @@ export function getMockBriefing(): DailyBriefing {
       {
         type: "alert",
         title: "Needs confirmation means exactly that",
-        body: "If Reddit, Etsy, or Google source coverage is weak, MarketLens now labels the signal instead of presenting it as a strong opportunity.",
+        body: "If Reddit, Etsy, or Google source coverage is weak, MarketLens now labels the signal instead of presenting it as a verified opportunity.",
         score: TREND_SIGNALS[3]?.score, delta: TREND_SIGNALS[3]?.weeklyChange, niche: TREND_SIGNALS[3]?.name,
       },
       {

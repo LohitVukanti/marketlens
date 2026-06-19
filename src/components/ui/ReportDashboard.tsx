@@ -55,11 +55,17 @@ async function exportToPDF(report: SavedReport) {
   y += 6;
   addText(`${report.niche} · ${report.location}`, 10, false, [100, 100, 120]);
   addText(`Score: ${d.marketScore}/100 — ${getScoreLabel(d.marketScore)}`, 12, true, [15, 15, 40]);
+  if (d.verdict) addText(`Verdict: ${d.verdict}`, 10, true, [79, 70, 229]);
   addText(`Generated: ${formatDate(report.created_at)}`, 9, false, [150, 150, 170]);
   y += 12;
 
   section("EXECUTIVE SUMMARY");
   addText(d.summary, 9);
+
+  if (d.dataConfidence) {
+    section("DATA CONFIDENCE");
+    addText(d.dataConfidence, 9);
+  }
 
   section("TARGET CUSTOMER PROFILE");
   addText(d.targetCustomer, 9);
@@ -81,6 +87,11 @@ async function exportToPDF(report: SavedReport) {
 
   section("RISKS");
   (d.risks ?? []).forEach((r) => addText(`⚠ ${r}`, 9));
+
+  if (d.manualValidationChecklist?.length) {
+    section("WHAT TO VALIDATE MANUALLY");
+    d.manualValidationChecklist.forEach((item, i) => addText(`${i + 1}. ${item}`, 9));
+  }
 
   section("ACTION PLAN");
   (d.actionPlan ?? []).forEach((a, i) => addText(`${i + 1}. ${a}`, 9));
@@ -160,6 +171,7 @@ export default function ReportDashboard({ report }: { report: SavedReport }) {
             {report.is_mock && (
               <Badge variant="amber">Sample Report</Badge>
             )}
+            {d.verdict && <Badge variant="blue">{d.verdict}</Badge>}
           </div>
           <p className="text-sm text-slate-500">
             {report.location} · {report.target_customer} · {formatDate(report.created_at)}
@@ -304,6 +316,30 @@ export default function ReportDashboard({ report }: { report: SavedReport }) {
       <SectionCard title="Executive Summary" icon="📋">
         <ProseBlock text={d.summary} />
       </SectionCard>
+
+      {(d.dataConfidence || d.manualValidationChecklist?.length) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {d.dataConfidence && (
+            <SectionCard title="Data Confidence" icon="🔎">
+              <ProseBlock text={d.dataConfidence} />
+            </SectionCard>
+          )}
+          {d.manualValidationChecklist?.length ? (
+            <SectionCard title="What to Validate Manually" icon="✅">
+              <div className="space-y-2">
+                {d.manualValidationChecklist.map((item, index) => (
+                  <div key={index} className="flex gap-3 bg-slate-50 rounded-xl p-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-50 text-brand-700 text-xs font-bold flex items-center justify-center mt-0.5">
+                      {index + 1}
+                    </span>
+                    <p className="text-sm text-slate-700">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          ) : null}
+        </div>
+      )}
 
       {/* ── Two-col: Customer + Pricing ────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
